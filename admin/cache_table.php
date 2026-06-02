@@ -14,8 +14,6 @@ require_once($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_ad
 
 Loader::includeModule('uplab.tilda');
 
-require_once($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/subscribe/prolog.php');
-
 global $APPLICATION;
 
 $userRights = $APPLICATION->GetGroupRight('uplab.tilda');
@@ -201,14 +199,14 @@ $oFilter = new CAdminFilter(
     ]
 );
 ?>
-	<form name="find_form" method="get" action="<?php echo $APPLICATION->GetCurPage(); ?>">
+    <form name="find_form" method="get" action="<?php echo $APPLICATION->GetCurPage(); ?>">
         <?php
         $oFilter->Begin();
         ?>
-		<tr>
-			<td><b><?php echo Loc::getMessage('uplab.tilda_SEARCH_FIND') ?>:</b></td>
-			<td>
-				<input type="text" size="25" name="find" value="<?php echo htmlspecialchars($find) ?>">
+        <tr>
+            <td><b><?php echo Loc::getMessage('uplab.tilda_SEARCH_FIND') ?>:</b></td>
+            <td>
+                <input type="text" size="25" name="find" value="<?php echo htmlspecialchars($find) ?>">
                 <?php
                 $arr = [
                     'reference'    => [
@@ -220,13 +218,13 @@ $oFilter = new CAdminFilter(
                 ];
                 echo SelectBoxFromArray('find_type', $arr, $find_type, '', '');
                 ?>
-			</td>
-		</tr>
+            </td>
+        </tr>
         <?php
         $oFilter->Buttons(['table_id' => $tableName, 'url' => $APPLICATION->GetCurPage(), 'form' => 'find_form']);
         $oFilter->End();
         ?>
-	</form>
+    </form>
 <?php
 
 $lAdmin->DisplayList();
