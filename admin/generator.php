@@ -182,7 +182,7 @@ require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/prolog_admin_a
     </form>
 
     <script>
-        $(function () {
+        jQuery(function ($) {
             $("select[name=project_id]").on("change", function () {
                 var $this = $(this);
                 var project = $this.val();

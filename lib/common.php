@@ -141,7 +141,19 @@ class Common
         if (!empty($data['html'])) {
             $matches = array();
             preg_match_all('/<body\b[^>]*>(.*?)<\/body>/is', $data['html'], $matches, PREG_SET_ORDER);
-            $html = Helper::convert2Win1251($matches[0][1]);
+            $html = Helper::convert2Win1251($matches[0][1] ?? '');
+
+            // Fallback: extract #allrecords container if <body> regex failed
+            if (empty($html)) {
+                $pos = stripos($data['html'], '<div id="allrecords"');
+                if ($pos !== false) {
+                    $endBodyPos = strripos($data['html'], '</body>');
+                    $rawHtml = $endBodyPos !== false
+                        ? substr($data['html'], $pos, $endBodyPos - $pos)
+                        : substr($data['html'], $pos);
+                    $html = Helper::convert2Win1251($rawHtml);
+                }
+            }
 
             if (!empty($html)) {
                 $content .= $html;
@@ -231,7 +243,19 @@ class Common
             $matches = array();
             preg_match_all('/<body\b[^>]*>(.*?)<\/body>/is', $data['html'], $matches, PREG_SET_ORDER);
 
-            $html = Helper::convert2Win1251($matches[0][1]);
+            $html = Helper::convert2Win1251($matches[0][1] ?? '');
+
+            // Fallback: extract #allrecords container if <body> regex failed
+            if (empty($html)) {
+                $pos = stripos($data['html'], '<div id="allrecords"');
+                if ($pos !== false) {
+                    $endBodyPos = strripos($data['html'], '</body>');
+                    $rawHtml = $endBodyPos !== false
+                        ? substr($data['html'], $pos, $endBodyPos - $pos)
+                        : substr($data['html'], $pos);
+                    $html = Helper::convert2Win1251($rawHtml);
+                }
+            }
 
             // Removing assets from HTML
             // Styles
