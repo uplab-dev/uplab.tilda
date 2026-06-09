@@ -3,7 +3,7 @@ var uTildaClearCache = function(confirmMsg){
     if(confirm(confirmMsg)) {
         $.post(
             "/bitrix/tools/uplab.tilda_post.php",
-            {clearCache: "Y"},
+            {clearCache: "Y", sessid: BX.bitrix_sessid()},
             function( data ) {
                 alert(data);
             }
@@ -16,7 +16,7 @@ var uTildaClearCacheList = function(confirmMsg){
     if(confirm(confirmMsg)) {
         $.post(
             "/bitrix/tools/uplab.tilda_post.php",
-            {clearCacheList: "Y"},
+            {clearCacheList: "Y", sessid: BX.bitrix_sessid()},
             function( data ) {
                 alert(data);
             }
