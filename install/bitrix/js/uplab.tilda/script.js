@@ -1,11 +1,39 @@
+/*
+ * Интеграция с Tilda (uplab.tilda) — модуль для CMS 1С-Битрикс
+ * Copyright (C) 2025  ООО «Аплэб»
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 var uTildaPost = function(params, callback){
     var xhr = new XMLHttpRequest();
     xhr.open("POST", "/bitrix/tools/uplab.tilda_post.php", true);
     xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
     xhr.onreadystatechange = function(){
-        if(xhr.readyState === 4 && callback){
-            callback(xhr.responseText);
+        if(xhr.readyState !== 4 || !callback){
+            return;
         }
+
+        // Ответ — JSON вида {status: 'success'|'error', message: '...'}.
+        var response;
+        try {
+            response = JSON.parse(xhr.responseText);
+        } catch (e) {
+            response = {status: 'error', message: xhr.responseText};
+        }
+
+        callback(response);
     };
 
     var pairs = [];
@@ -16,26 +44,91 @@ var uTildaPost = function(params, callback){
     }
     xhr.send(pairs.join("&"));
 };
-var uTildaClearCache = function(confirmMsg){
-    confirmMsg = confirmMsg || '';
-    if(confirm(confirmMsg)) {
-        uTildaPost(
-            {clearCache: "Y", sessid: BX.bitrix_sessid()},
-            function( data ) {
-                alert(data);
-            }
-        );
+
+// Показывает уведомление диалогом BX.UI.Dialogs.MessageBox.alert; при отсутствии модуля ui — откат на alert().
+var uTildaNotify = function(message){
+    if(!message){
+        return;
+    }
+
+    var win = window.top || window;
+
+    if(win.BX && win.BX.UI && win.BX.UI.Dialogs && win.BX.UI.Dialogs.MessageBox){
+        win.BX.UI.Dialogs.MessageBox.alert(win.BX.util.htmlspecialchars(message));
+    } else {
+        alert(message);
     }
 };
 
-var uTildaClearCacheList = function(confirmMsg){
-    confirmMsg = confirmMsg || '';
-    if(confirm(confirmMsg)) {
-        uTildaPost(
-            {clearCacheList: "Y", sessid: BX.bitrix_sessid()},
-            function( data ) {
-                alert(data);
+// Запрашивает подтверждение через BX.UI.Dialogs.MessageBox; при отсутствии модуля ui — откат на confirm().
+var uTildaConfirm = function(message, onConfirm){
+    message = message || '';
+
+    var win = window.top || window;
+
+    if(win.BX && win.BX.UI && win.BX.UI.Dialogs && win.BX.UI.Dialogs.MessageBox){
+        win.BX.UI.Dialogs.MessageBox.confirm(
+            win.BX.util.htmlspecialchars(message),
+            function(messageBox){
+                messageBox.close();
+                onConfirm();
+            },
+            function(messageBox){
+                messageBox.close();
             }
         );
+    } else if(confirm(message)) {
+        onConfirm();
     }
+};
+
+// Флаг «запрос в процессе» — блокирует повторный запуск, пока ждём ответ сервера.
+var uTildaBusy = false;
+
+// Гасит/возвращает пункты меню Tilda (ссылки, вызывающие uTildaClearCache*),
+// чтобы их нельзя было кликнуть, пока выполняется запрос.
+var uTildaSetMenuBlocked = function(blocked){
+    var win = window.top || window;
+    var links = win.document.querySelectorAll('a[href*="uTildaClearCache"]');
+    for(var i = 0; i < links.length; i++){
+        links[i].style.pointerEvents = blocked ? 'none' : '';
+        links[i].style.opacity = blocked ? '0.5' : '';
+    }
+};
+
+// Отправляет действие на сервер с индикатором ожидания (BX.showWait/closeWait)
+// и блокировкой пунктов меню от повторного клика, пока запрос не завершится.
+var uTildaRun = function(params){
+    if(uTildaBusy){
+        return;
+    }
+    uTildaBusy = true;
+
+    var win = window.top || window;
+
+    uTildaSetMenuBlocked(true);
+    if(win.BX && win.BX.showWait){
+        win.BX.showWait();
+    }
+
+    uTildaPost(params, function(response){
+        if(win.BX && win.BX.closeWait){
+            win.BX.closeWait();
+        }
+        uTildaSetMenuBlocked(false);
+        uTildaBusy = false;
+        uTildaNotify(response.message);
+    });
+};
+
+var uTildaClearCache = function(confirmMsg){
+    uTildaConfirm(confirmMsg, function(){
+        uTildaRun({clearCache: "Y", sessid: BX.bitrix_sessid()});
+    });
+};
+
+var uTildaClearCacheList = function(confirmMsg){
+    uTildaConfirm(confirmMsg, function(){
+        uTildaRun({clearCacheList: "Y", sessid: BX.bitrix_sessid()});
+    });
 };

@@ -1,15 +1,23 @@
 <?php
 
 use Bitrix\Main\Localization\Loc;
+use Bitrix\Main\Loader;
 use Bitrix\Main\Page\Asset;
+use Bitrix\Main\UI\Extension;
 
 global $APPLICATION;
 
-if (!\Bitrix\Main\Loader::includeModule('uplab.tilda')) {
+if (!Loader::includeModule('uplab.tilda')) {
     return [];
 }
 
-Asset::getInstance()->addJs("/bitrix/js/uplab.tilda/script.js");
+// Подключаем диалоги BX.UI.Dialogs.MessageBox (модуль ui, ядро >= 20) для уведомлений
+// и подтверждений; при отсутствии модуля ui script.js откатится на alert()/confirm().
+if (Loader::includeModule('ui')) {
+    Extension::load('ui.dialogs.messagebox');
+}
+
+Asset::getInstance()->addJs("/bitrix/js/uplab.tilda/script.min.js");
 
 $aMenu = [
     "parent_menu" => "global_menu_content",

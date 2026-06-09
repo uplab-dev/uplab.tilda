@@ -35,7 +35,9 @@ $MESS['uplab.tilda_NO_MODULE'] = 'Модуль uplab.tilda не подключе
 $MESS['uplab.tilda_PAGES'] = 'Страницы';
 
 $MESS['uplab.tilda_BASE_SETTINGS'] = 'Настройки соединения с Tilda';
+$MESS['uplab.tilda_API_URL'] = 'Базовый URL Tilda API (по умолчанию https://api.tildacdn.info/v1/).';
 $MESS['uplab.tilda_TIMEOUT'] = 'Максимально позволенное количество секунд для выполнения cURL-функций.';
 $MESS['uplab.tilda_CONNECTTIMEOUT'] = 'Количество секунд ожидания при попытке соединения. Используйте 0 для бесконечного ожидания.';
 
 $MESS['uplab.tilda_SESSION_EXPIRED'] = 'Ваша сессия истекла! Пожалуйста, перегрузите страницу.';
+$MESS['uplab.tilda_UNKNOWN_ACTION'] = 'Неизвестное действие.';

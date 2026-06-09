@@ -1,5 +1,23 @@
 <?php
 
+/*
+ * Интеграция с Tilda (uplab.tilda) — модуль для CMS 1С-Битрикс
+ * Copyright (C) 2025  ООО «Аплэб»
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 namespace Uplab\Tilda;
 
 use Bitrix\Main\Application;
@@ -53,8 +71,8 @@ class Cache
 
             $data = json_decode($content, true);
 
-            if (!$data || $data['status'] === 'ERROR') {
-                if ($data['message']) {
+            if (!is_array($data) || ($data['status'] ?? '') === 'ERROR') {
+                if (!empty($data['message'])) {
                     Helper::notifyError($data['message']);
                 }
 
@@ -69,14 +87,16 @@ class Cache
 
             if ($noteInBase) {
                 CacheTable::addOrUpdate([
-                    'TAG'  => $cacheId,
-                    'NAME' => $data['result']['title'],
-                    'DATE' => new DateTime(),
+                    'TAG'        => $cacheId,
+                    'NAME'       => $data['result']['title'] ?? '',
+                    'PAGE_ID'    => isset($data['result']['id']) ? (int)$data['result']['id'] : null,
+                    'PROJECT_ID' => isset($data['result']['projectid']) ? (int)$data['result']['projectid'] : null,
+                    'DATE'       => new DateTime(),
                 ]);
             }
         }
 
-        return ($data['status'] === 'FOUND' && $data['result']) ?
+        return (is_array($data) && ($data['status'] ?? '') === 'FOUND' && !empty($data['result'])) ?
             $data['result'] :
             [];
     }
@@ -91,8 +111,7 @@ class Cache
         $cache = BitrixCache::createInstance();
         $cache->cleanDir('', self::$cacheBaseDir);
 
-        Application::getConnection()
-            ->query('DELETE FROM ' . CacheTable::getTableName() . ';');
+        Application::getConnection()->truncateTable(CacheTable::getTableName());
     }
 
     /**

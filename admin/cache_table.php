@@ -1,14 +1,35 @@
 <?php
 
+/*
+ * Интеграция с Tilda (uplab.tilda) — модуль для CMS 1С-Битрикс
+ * Copyright (C) 2025  ООО «Аплэб»
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 /**
  * @global $find
  * @global $find_type
  */
 
+use Bitrix\Main\Application;
 use Bitrix\Main\Loader;
 use Bitrix\Main\Localization\Loc;
 use Uplab\Tilda\Cache;
 use Uplab\Tilda\CacheTable;
+use Bitrix\Main\UI\AdminPageNavigation;
+use Bitrix\Main\UI\Filter;
 
 const ADMIN_MODULE_NAME = 'uplab.tilda';
 
@@ -16,127 +37,154 @@ require_once($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_ad
 
 global $APPLICATION;
 
-$userRights = $APPLICATION->GetGroupRight('uplab.tilda');
+$userRights = $APPLICATION->GetGroupRight(ADMIN_MODULE_NAME);
 
 if (!Loader::includeModule(ADMIN_MODULE_NAME) || $userRights < "R") {
     $APPLICATION->AuthForm(Loc::getMessage('ACCESS_DENIED'));
 }
 
-$tableName = CacheTable::getTableName();
+$APPLICATION->SetTitle(Loc::getMessage('uplab.tilda_PAGE_TITLE'));
 
-$oSort = new CAdminSorting($tableName, 'NAME', 'asc');
-$lAdmin = new CAdminList($tableName, $oSort);
+/** @var CacheTable::class $entity */
+$entity = CacheTable::class;
 
-/*
- * Фильтр
- */
-function CheckFilter()
-{
-    global $FilterArr, $lAdmin;
-    foreach ($FilterArr as $f) {
-        global $$f;
-    }
-
-    return count($lAdmin->arFilterErrors) == 0;
-}
-
-$FilterArr = [
-    'find',
-];
-
-$lAdmin->InitFilter($FilterArr);
-
-if (CheckFilter()) {
-    $arFilter = [
-        'NAME' => $find,
-    ];
-}
-
+$sTableID = CacheTable::getTableName();
+$sorting = new CAdminUiSorting($sTableID, "NAME", "ASC");
+$lAdmin = new CAdminUiList($sTableID, $sorting);
 
 /*
  * Обработка действий над списком
  */
-if (($tags = $lAdmin->GroupAction()) && $userRights === 'W' && check_bitrix_sessid()) {
+if (($ids = $lAdmin->GroupAction()) && $userRights >= 'W' && check_bitrix_sessid()) {
     if ($lAdmin->IsGroupActionToAll()) {
         $tagsData = CacheTable::getList([
             'select' => ['TAG']
         ])->fetchAll();
 
         foreach ($tagsData as $item) {
-            $tags[] = $item['TAG'];
+            $ids[] = $item['TAG'];
         }
         unset($item, $tagsData);
     }
 
     $action = $lAdmin->GetAction();
-
-    foreach ($tags as $tag) {
-        if (strlen($tag) <= 0) {
+    $connection = Application::getConnection();
+    foreach ($ids as $tag) {
+        // TAG по инварианту — md5(url) (32 hex-символа); отсекаем всё прочее,
+        // чтобы произвольное значение не ушло в cleanDir()/delete().
+        if (!preg_match('/^[a-f0-9]{32}$/i', (string)$tag)) {
             continue;
         }
 
         switch ($action) {
             case 'delete':
+                @set_time_limit(0);
+                $connection->startTransaction();
+
                 Cache::clearPageCache($tag);
-                CacheTable::delete($tag);
+
+                $result = CacheTable::delete($tag);
+                if (!$result->isSuccess()) {
+                    $connection->rollbackTransaction();
+                    $err = implode(', ', $result->getErrorMessages());
+                    $lAdmin->AddGroupError(GetMessage("DELETE_ERROR") . $err, $tag);
+                } else {
+                    $connection->commitTransaction();
+                }
                 break;
         }
+    }
+
+    if ($lAdmin->hasGroupErrors()) {
+        $adminSidePanelHelper->sendJsonErrorResponse($lAdmin->getGroupErrors());
+    } else {
+        $adminSidePanelHelper->sendSuccessResponse();
     }
 }
 
 
-/*
- * Получение элементов списка
- */
-$queryParams = [];
-$queryParams['order'] = [
-    strtoupper($oSort->getField()) => $oSort->getOrder()
-];
+$arFilter = [];
 
-if ($find_type && $find) {
-    $queryParams['filter'] = [
-        '%' . $find_type => $find
-    ];
+$filterFields = [
+    ["id" => "NAME", "name" => Loc::getMessage('uplab.tilda_HEADER_NAME'), "default" => true],
+    ["id" => "TAG", "name" => Loc::getMessage('uplab.tilda_HEADER_TAG'), "default" => true],
+    ["id" => "PAGE_ID", "name" => Loc::getMessage('uplab.tilda_HEADER_PAGE_ID'), "default" => true],
+    ["id" => "PROJECT_ID", "name" => Loc::getMessage('uplab.tilda_HEADER_PROJECT_ID'), "default" => true],
+    ["id" => "DATE", "name" => Loc::getMessage('uplab.tilda_HEADER_DATE'), "default" => true, 'type' => 'date']
+];
+$filterOption = new Filter\Options($sTableID);
+$filter = $filterOption->getFilter($filterFields);
+
+if (!empty($filter['TAG'])) {
+    $arFilter["%TAG"] = $filter['TAG'];
+}
+if (!empty($filter['NAME'])) {
+    $arFilter["%NAME"] = $filter['NAME'];
+}
+if (!empty($filter['PAGE_ID'])) {
+    $arFilter["PAGE_ID"] = (int)$filter['PAGE_ID'];
+}
+if (!empty($filter['PROJECT_ID'])) {
+    $arFilter["PROJECT_ID"] = (int)$filter['PROJECT_ID'];
+}
+if (!empty($filter['DATE_from'])) {
+    $arFilter[">=DATE"] = $filter['DATE_from'];
+}
+if (!empty($filter['DATE_to'])) {
+    $arFilter["<=DATE"] = $filter['DATE_to'];
 }
 
-$pagesListDatabase = CacheTable::getList($queryParams);
 
-$pagesListDatabase = new CAdminResult($pagesListDatabase, $tableName);
-$pagesListDatabase->NavStart();
-$lAdmin->NavText($pagesListDatabase->GetNavPrint(Loc::getMessage('tilda_XXX1')));
+InitSorting();
 
+$sortOrder = mb_strtoupper($sorting->getOrder());
+if ($sortOrder !== "DESC") {
+    $sortOrder = "ASC";
+}
 
-/*
- * Подготовка списка к выводу
- */
+$nav = new AdminPageNavigation("nav-uplabtilda-cache_table");
+
+$listParams = [
+    'filter'      => $arFilter,
+    'order'       => ["NAME" => $sortOrder],
+    'count_total' => true,
+];
+
+if (!(isset($_REQUEST["mode"]) && $_REQUEST["mode"] === "excel")) {
+    $listParams['offset'] = $nav->getOffset();
+    $listParams['limit'] = $nav->getLimit();
+}
+
+$entityList = $entity::getList($listParams);
+$count = $entityList->getCount();
+$nav->setRecordCount($count);
+
+if ($lAdmin->isTotalCountRequest()) {
+    $lAdmin->sendTotalCountResponse($count);
+}
+
+$lAdmin->setNavigation($nav, Loc::getMessage("uplab.tilda_NAVIGATION"));
+
 $lAdmin->AddHeaders([
-    [
-        'id'      => 'TAG',
-        'content' => Loc::getMessage('uplab.tilda_HEADER_TAG'),
-        'sort'    => 'tag',
-        'default' => false,
-    ],
-    [
-        'id'      => 'NAME',
-        'content' => Loc::getMessage('uplab.tilda_HEADER_NAME'),
-        'sort'    => 'name',
-        'default' => true,
-    ],
-    [
-        'id'      => 'DATE',
-        'content' => Loc::getMessage('uplab.tilda_HEADER_DATE'),
-        'sort'    => 'date',
-        'default' => true,
-    ],
+    ["id" => "NAME", "content" => Loc::getMessage('uplab.tilda_HEADER_NAME'), "sort" => "NAME", "default" => true],
+    ["id" => "TAG", "content" => Loc::getMessage('uplab.tilda_HEADER_TAG'), "sort" => "TAG", "default" => true],
+    ["id" => "PAGE_ID", "content" => Loc::getMessage('uplab.tilda_HEADER_PAGE_ID'), "sort" => "PAGE_ID", "default" => true],
+    ["id" => "PROJECT_ID", "content" => Loc::getMessage('uplab.tilda_HEADER_PROJECT_ID'), "sort" => "PROJECT_ID", "default" => true],
+    ["id" => "DATE", "content" => Loc::getMessage('uplab.tilda_HEADER_DATE'), "sort" => "DATE", "default" => true]
 ]);
 
+$userItemCache = [];
 
-while ($pageDatabase = $pagesListDatabase->NavNext(false)) {
-    $row =& $lAdmin->AddRow($pageDatabase['TAG'], $pageDatabase);
+while ($item = $entityList->fetch()) {
+    $itemId = $item['TAG'];
 
-    $row->AddViewField('TAG', $pageDatabase['TAG']);
-    $row->AddViewField('NAME', $pageDatabase['NAME']);
-    $row->AddViewField('DATE', $pageDatabase['DATE']);
+    $row = &$lAdmin->AddRow($itemId, $item);
+
+    $row->AddViewField('NAME', htmlspecialcharsbx($item['NAME']));
+    $row->AddViewField('TAG', htmlspecialcharsbx($item['TAG']));
+    $row->AddViewField('PAGE_ID', (int)$item['PAGE_ID']);
+    $row->AddViewField('PROJECT_ID', (int)$item['PROJECT_ID']);
+    $row->AddViewField('DATE', htmlspecialcharsbx((string)$item['DATE']));
 
     $arActions = [];
 
@@ -144,89 +192,32 @@ while ($pageDatabase = $pagesListDatabase->NavNext(false)) {
         $arActions[] = [
             'ICON'   => 'delete',
             'TEXT'   => Loc::getMessage('uplab.tilda_MENU_CLEAR_CACHE'),
-            'ACTION' => "if(confirm('" . Loc::getMessage('uplab.tilda_MENU_CLEAR_CACHE_COFIRM') . "')) " . $lAdmin->ActionDoGroup($pageDatabase['TAG'], 'delete')
+            'ACTION' => "if(confirm('" . Loc::getMessage('uplab.tilda_MENU_CLEAR_CACHE_COFIRM') . "')) " . $lAdmin->ActionDoGroup($itemId, 'delete')
         ];
     }
 
     $row->AddActions($arActions);
 }
 
-
-/*
- * Резюме таблицы
- */
-$lAdmin->AddFooter(
-    [
-        [
-            'title' => Loc::getMessage('MAIN_ADMIN_LIST_SELECTED'),
-            'value' => $pagesListDatabase->SelectedRowsCount()
-        ],
-        [
-            'counter' => true,
-            'title'   => Loc::getMessage('MAIN_ADMIN_LIST_CHECKED'),
-            'value'   => '0'
-        ],
-    ]
-);
-
-
 /*
  * Групповые действия
  */
-$lAdmin->AddGroupActionTable([
-    'delete' => Loc::getMessage('uplab.tilda_MENU_CLEAR_CACHE'),
-]);
+$ar = [
+    "delete"     => true,
+    "for_all"    => true
+];
+//for Intranet editions: structure group operations and last authorization time
+$arParams = ["select_onchange" => "document.getElementById('bx_user_groups').style.display = (this.value == 'add_group' || this.value == 'remove_group'? 'block':'none');" . (isset($ar["structure"]) ? "document.getElementById('bx_user_structure').style.display = (this.value == 'add_structure' || this.value == 'remove_structure'? 'block':'none');" : "")];
+$lAdmin->AddGroupActionTable($ar, $arParams);
 
 
-/*
- * Вывод
- */
+$lAdmin->AddAdminContextMenu();
+
 $lAdmin->CheckListMode();
 
-$APPLICATION->SetTitle(Loc::getMessage('uplab.tilda_PAGE_TITLE'));
+require($_SERVER["DOCUMENT_ROOT"] . BX_ROOT . "/modules/main/include/prolog_admin_after.php");
 
-require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_after.php');
-
-
-/*
- * Вывод фильтра
- */
-$oFilter = new CAdminFilter(
-    $tableName . '_filter',
-    [
-        'find_NAME' => Loc::getMessage('uplab.tilda_HEADER_NAME'),
-    ]
-);
-?>
-    <form name="find_form" method="get" action="<?php
-    echo $APPLICATION->GetCurPage(); ?>">
-        <?php
-        $oFilter->Begin();
-        ?>
-        <tr>
-            <td><b><?= Loc::getMessage('uplab.tilda_SEARCH_FIND') ?>:</b></td>
-            <td>
-                <input type="text" size="25" name="find" value="<?= htmlspecialcharsbx($find) ?>">
-                <?php
-                $arr = [
-                    'reference'    => [
-                        Loc::getMessage('uplab.tilda_HEADER_NAME'),
-                    ],
-                    'reference_id' => [
-                        'NAME',
-                    ]
-                ];
-                echo SelectBoxFromArray('find_type', $arr, $find_type, '', '');
-                ?>
-            </td>
-        </tr>
-        <?php
-        $oFilter->Buttons(['table_id' => $tableName, 'url' => $APPLICATION->GetCurPage(), 'form' => 'find_form']);
-        $oFilter->End();
-        ?>
-    </form>
-<?php
-
+$lAdmin->DisplayFilter($filterFields);
 $lAdmin->DisplayList();
 
-require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/epilog_admin.php');
+require($_SERVER["DOCUMENT_ROOT"] . BX_ROOT . "/modules/main/include/epilog_admin.php");

@@ -35,7 +35,9 @@ $MESS['uplab.tilda_NO_MODULE'] = 'The uplab.tilda module is not installed';
 $MESS['uplab.tilda_PAGES'] = 'Pages';
 
 $MESS['uplab.tilda_BASE_SETTINGS'] = 'Tilda connection settings';
+$MESS['uplab.tilda_API_URL'] = 'Tilda API base URL (default https://api.tildacdn.info/v1/).';
 $MESS['uplab.tilda_TIMEOUT'] = 'The maximum number of seconds allowed for cURL functions to execute.';
 $MESS['uplab.tilda_CONNECTTIMEOUT'] = 'The number of seconds to wait while trying to connect. Use 0 to wait indefinitely.';
 
 $MESS['uplab.tilda_SESSION_EXPIRED'] = 'Your session has expired! Please reload the page.';
+$MESS['uplab.tilda_UNKNOWN_ACTION'] = 'Unknown action.';

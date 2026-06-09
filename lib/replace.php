@@ -1,5 +1,23 @@
 <?php
 
+/*
+ * Интеграция с Tilda (uplab.tilda) — модуль для CMS 1С-Битрикс
+ * Copyright (C) 2025  ООО «Аплэб»
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 namespace Uplab\Tilda;
 
 use Bitrix\Main\Application;
@@ -81,9 +99,9 @@ class Replace
 
         $explodedParams = preg_split("~(\s|&nbsp;)+~u", $match);
         foreach ($explodedParams as $value) {
-            $keyValue = explode('=', $value);
-            $keyValue[0] = str_replace("amp;", "", $keyValue[0]);
-            $params[$keyValue[0]] = $keyValue[1];
+            $keyValue = explode('=', $value, 2);
+            $key = str_replace("amp;", "", $keyValue[0]);
+            $params[$key] = $keyValue[1] ?? '';
         }
 
         if (
@@ -91,12 +109,12 @@ class Replace
             $params['HIDEPAGETEMPLATE'] === "Y"
         ) {
             // Case: Don't display site template
-            $content = Common::getPageFullContent(intval($params['PAGE']));
+            $content = Common::getPageFullContent((int)$params['PAGE']);
         } else {
             $moveTarget = MoveResourcesTarget::fromMixed($params['MOVERESOURCESTO'] ?? '');
             if (MoveResourcesTarget::shouldMove($moveTarget)) {
                 // Case: Display site template case + replace Tilda tag + move Tilda assets
-                $parts = Common::getPageParts(intval($params['PAGE']));
+                $parts = Common::getPageParts((int)$params['PAGE']);
 
                 // Insert Tilda assets to the place defined by the tag (head/body end)
                 $content = MoveResourcesTarget::injectAssets($moveTarget, $content, $parts['assets']);
@@ -105,7 +123,7 @@ class Replace
                 $content = str_replace($tildaTag, $parts['html'], $content);
             } else {
                 // Case: Display site template case + replace Tilda tag
-                $html = Common::getPageContent(intval($params['PAGE']), $params);
+                $html = Common::getPageContent((int)$params['PAGE'], $params);
 
                 $content = str_replace($tildaTag, $html, $content);
             }

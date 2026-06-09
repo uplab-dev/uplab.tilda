@@ -1,7 +1,26 @@
 <?php
 
+/*
+ * Интеграция с Tilda (uplab.tilda) — модуль для CMS 1С-Битрикс
+ * Copyright (C) 2025  ООО «Аплэб»
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 namespace Uplab\Tilda;
 
+use Bitrix\Main\Config\Option;
 use Bitrix\Main\Localization\Loc;
 
 Loc::loadMessages(__FILE__);
@@ -17,11 +36,17 @@ Loc::loadMessages(__FILE__);
  */
 class Common
 {
+    /** Базовый URL Tilda API по умолчанию (используется, если настройка не задана). */
+    const DEFAULT_API_URL = 'https://api.tildacdn.info/v1/';
+
     /** @var string Публичный ключ Tilda API (из настроек модуля). */
     public static $publickey;
 
     /** @var string Секретный ключ Tilda API (из настроек модуля). */
     public static $secretkey;
+
+    /** @var string Базовый URL Tilda API (из настроек модуля, иначе {@see Common::DEFAULT_API_URL}). */
+    public static $apiUrl;
 
     /** @var string Идентификатор модуля. */
     public static $module_id = 'uplab.tilda';
@@ -43,8 +68,11 @@ class Common
             return;
         }
         self::$inc = true;
-        self::$publickey = \COption::GetOptionString(self::$module_id, "UPT_PUBLIC_KEY");
-        self::$secretkey = \COption::GetOptionString(self::$module_id, "UPT_SECRET_KEY");
+        self::$publickey = Option::get(self::$module_id, "UPT_PUBLIC_KEY");
+        self::$secretkey = Option::get(self::$module_id, "UPT_SECRET_KEY");
+
+        $apiUrl = trim(Option::get(self::$module_id, "UPT_API_URL", self::DEFAULT_API_URL));
+        self::$apiUrl = ($apiUrl !== '') ? $apiUrl : self::DEFAULT_API_URL;
     }
 
     /**
