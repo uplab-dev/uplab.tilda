@@ -1,3 +1,3 @@
 <?php
-$MESS['uplab.tilda_ERROR_CURL'] = 'Îøèáêà curl: ';
-$MESS['uplab.tilda_ERROR_FGC'] = 'Îøèáêà file_get_contents';
+$MESS['uplab.tilda_ERROR_CURL'] = 'ÐžÑˆÐ¸Ð±ÐºÐ° curl: ';
+$MESS['uplab.tilda_ERROR_FGC'] = 'ÐžÑˆÐ¸Ð±ÐºÐ° file_get_contents';

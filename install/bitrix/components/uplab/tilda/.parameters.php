@@ -1,22 +1,33 @@
 <?php
 
+use Bitrix\Main\Loader;
 use Uplab\Tilda\Common;
+use Uplab\Tilda\Enum\MoveResourcesTarget;
 
-if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
+if (!defined("B_PROLOG_INCLUDED") || B_PROLOG_INCLUDED !== true) {
     die();
 }
+/** @var array $arCurrentValues */
 
-if (!CModule::IncludeModule('uplab.tilda')) {
+
+if (!Loader::includeModule('uplab.tilda')) {
     ShowError(GetMessage('CC_UPT_NOT_INSTALLED'));
     return false;
 }
 
 $projectsList = Common::getAssocProjectsList();
-$currentProject = $arCurrentValues['PROJECT'] ?: key($projectsList);
+
+$currentProject = !empty($arCurrentValues['PROJECT']) ? $arCurrentValues['PROJECT'] : key($projectsList);
 
 if (!$projectsList || !$currentProject) {
     echo "<script>alert('" . GetMessage("UPT_NO_PROJECTS") . "');</script>";
     return false;
+}
+
+// Build the resource-move list from the single source of truth (enum).
+$moveResourcesValues = array();
+foreach (MoveResourcesTarget::langSuffixes() as $optValue => $langSuffix) {
+    $moveResourcesValues[$optValue] = GetMessage('UPT_' . $langSuffix);
 }
 
 $arComponentParameters = array(
@@ -51,11 +62,7 @@ $arComponentParameters = array(
             'DEFAULT' => '',
             'PARENT'  => 'BASE',
             'REFRESH' => 'Y',
-            'VALUES'  => [
-                ''        => GetMessage('UPT_MOVE_TILDA_ASSETS_NONE'),
-                'HEADEND' => GetMessage('UPT_MOVE_TILDA_ASSETS_HEADEND'),
-                'BODYEND' => GetMessage('UPT_MOVE_TILDA_ASSETS_BODYEND'),
-            ],
+            'VALUES'  => $moveResourcesValues,
         ),
     ),
 );

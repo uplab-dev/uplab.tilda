@@ -3,9 +3,32 @@
 namespace Uplab\Tilda;
 
 use Bitrix\Main\Application;
+use Uplab\Tilda\Enum\MoveResourcesTarget;
 
+/**
+ * Замена тегов `[UPLABTILDA ...]` на HTML-контент страниц Tilda в буфере вывода.
+ *
+ * Вызывается по событию `main:OnEndBufferContent`, разбирает параметры тега
+ * (`PROJECT`, `PAGE`, `HIDEPAGETEMPLATE`, `MOVERESOURCESTO`) и выбирает один из
+ * режимов вставки контента, получая HTML через {@see Common}. Также чистит
+ * теги из индексируемого поиском контента.
+ *
+ * @package Uplab\Tilda
+ */
 class Replace
 {
+    /**
+     * Находит в буфере вывода все теги `[UPLABTILDA ...]` и заменяет их на
+     * контент соответствующих страниц Tilda.
+     *
+     * В публичной части сайта (не в админке) для каждого вхождения вызывается
+     * {@see Replace::replaceContent()}; дополнительно совместимостный фикс
+     * jQuery `.load` → `.on('load', ...)` и удаление кода в маркерах
+     * `<!--UTilda-->...<!--EndUTilda-->`.
+     *
+     * @param string $content Буфер вывода страницы (передаётся по ссылке и изменяется).
+     * @return bool false в админ-разделе, иначе true.
+     */
     static function tagReplace(&$content)
     {
         $request = Application::getInstance()->getContext()->getRequest();
@@ -34,6 +57,23 @@ class Replace
         return true;
     }
 
+    /**
+     * Заменяет одно вхождение тега Tilda на HTML страницы в зависимости от
+     * режима вставки.
+     *
+     * Разбирает параметры тега и выбирает режим:
+     * — `HIDEPAGETEMPLATE=Y` — полный HTML без шаблона сайта
+     *   ({@see Common::getPageFullContent()});
+     * — `MOVERESOURCESTO=HEADEND|BODYEND` — вынос ассетов в конец head/body и
+     *   замена тега на тело страницы ({@see Common::getPageParts()});
+     * — по умолчанию — встраивание контента в шаблон сайта
+     *   ({@see Common::getPageContent()}).
+     *
+     * @param string $content  Буфер вывода страницы.
+     * @param string $match    Содержимое тега без скобок (например, `UPLABTILDA PROJECT=.. PAGE=..`).
+     * @param string $tildaTag Полный текст тега вместе со скобками `[...]` для замены.
+     * @return string Контент с выполненной заменой.
+     */
     static function replaceContent($content, $match, $tildaTag)
     {
         // Parsing tag service parameters: PROJECT, PAGE, HIDEPAGETEMPLATE, MOVERESOURCESTO
@@ -53,22 +93,13 @@ class Replace
             // Case: Don't display site template
             $content = Common::getPageFullContent(intval($params['PAGE']));
         } else {
-            if (
-                !empty($params['MOVERESOURCESTO'])
-            ) {
-                // Case: Display site template case + replace Tilda tag + move Tilda assets to head end
+            $moveTarget = MoveResourcesTarget::fromMixed($params['MOVERESOURCESTO'] ?? '');
+            if (MoveResourcesTarget::shouldMove($moveTarget)) {
+                // Case: Display site template case + replace Tilda tag + move Tilda assets
                 $parts = Common::getPageParts(intval($params['PAGE']));
 
-                switch ($params['MOVERESOURCESTO']) {
-                    case 'HEADEND':
-                        // Insert Tilda assets to head end
-                        $content = str_replace('</head>', $parts['assets'] . '</head>', $content);
-                        break;
-                    case 'BODYEND':
-                        // Insert Tilda assets to body end
-                        $content = str_replace('</body>', $parts['assets'] . '</body>', $content);
-                        break;
-                }
+                // Insert Tilda assets to the place defined by the tag (head/body end)
+                $content = MoveResourcesTarget::injectAssets($moveTarget, $content, $parts['assets']);
 
                 // Replace Tilda tag with content
                 $content = str_replace($tildaTag, $parts['html'], $content);
@@ -83,6 +114,16 @@ class Replace
         return $content;
     }
 
+    /**
+     * Вырезает теги `[UPLABTILDA ...]` из полей `TITLE` и `BODY` перед
+     * индексацией контента инфоблоков поиском, чтобы они не попадали в индекс.
+     *
+     * Предназначен для обработчика события поиска (`OnSearchGetContent`/
+     * `BeforeIndex`).
+     *
+     * @param array $arFields Поля индексируемого элемента.
+     * @return array Поля с очищенными от тегов `TITLE` и `BODY`.
+     */
     static function removeFromIndex($arFields)
     {
         if ($arFields["MODULE_ID"] === "iblock") {

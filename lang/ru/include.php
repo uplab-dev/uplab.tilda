@@ -1,39 +1,41 @@
 <?php
 /**
- * Общий файл языковых констант
+ * РћР±С‰РёР№ С„Р°Р№Р» СЏР·С‹РєРѕРІС‹С… РєРѕРЅСЃС‚Р°РЅС‚
  */
 
-$MESS['uplab.tilda_SETTINGS_TAB_NAME'] = 'Настройки доступа к API';
-$MESS['uplab.tilda_PUBLIC_KEY'] = 'Публичный ключ:';
-$MESS['uplab.tilda_SECRET_KEY'] = 'Секретный ключ:';
-$MESS['uplab.tilda_SETTINGS_WARNING'] = "<b>Взаимодействие с API доступно только для тарифа Business.</b><br />Для начала работы, Вам нужно получить Публичный и Секретный ключи в личном кабинете Tilda (Настройки сайта - Экспорт - API Integration).";
+$MESS['uplab.tilda_SETTINGS_TAB_NAME'] = 'РќР°СЃС‚СЂРѕР№РєРё РґРѕСЃС‚СѓРїР° Рє API';
+$MESS['uplab.tilda_PUBLIC_KEY'] = 'РџСѓР±Р»РёС‡РЅС‹Р№ РєР»СЋС‡:';
+$MESS['uplab.tilda_SECRET_KEY'] = 'РЎРµРєСЂРµС‚РЅС‹Р№ РєР»СЋС‡:';
+$MESS['uplab.tilda_SETTINGS_WARNING'] = "<b>Р’Р·Р°РёРјРѕРґРµР№СЃС‚РІРёРµ СЃ API РґРѕСЃС‚СѓРїРЅРѕ С‚РѕР»СЊРєРѕ РґР»СЏ С‚Р°СЂРёС„Р° Business.</b><br />Р”Р»СЏ РЅР°С‡Р°Р»Р° СЂР°Р±РѕС‚С‹, Р’Р°Рј РЅСѓР¶РЅРѕ РїРѕР»СѓС‡РёС‚СЊ РџСѓР±Р»РёС‡РЅС‹Р№ Рё РЎРµРєСЂРµС‚РЅС‹Р№ РєР»СЋС‡Рё РІ Р»РёС‡РЅРѕРј РєР°Р±РёРЅРµС‚Рµ Tilda (РќР°СЃС‚СЂРѕР№РєРё СЃР°Р№С‚Р° - Р­РєСЃРїРѕСЂС‚ - API Integration).";
 
-$MESS['uplab.tilda_MENU_TITLE'] = 'Интеграция Tilda';
-$MESS['uplab.tilda_CLEAR_CACHE_MENU_TITLE'] = 'Полностью очисить кэш';
-$MESS['uplab.tilda_CLEAR_CACHE_LIST_MENU_TITLE'] = 'Обновить список страниц';
-$MESS['uplab.tilda_CLEAR_CACHE_CONFIRM'] = 'Удалить кэш?';
-$MESS['uplab.tilda_CLEAR_CACHE_LIST_CONFIRM'] = 'Обновить список страниц?';
-$MESS['uplab.tilda_ADD_NEW_PAGE_MENU_TITLE'] = 'Добавить страницу';
+$MESS['uplab.tilda_MENU_TITLE'] = 'РРЅС‚РµРіСЂР°С†РёСЏ Tilda';
+$MESS['uplab.tilda_CLEAR_CACHE_MENU_TITLE'] = 'РџРѕР»РЅРѕСЃС‚СЊСЋ РѕС‡РёСЃРёС‚СЊ РєСЌС€';
+$MESS['uplab.tilda_CLEAR_CACHE_LIST_MENU_TITLE'] = 'РћР±РЅРѕРІРёС‚СЊ СЃРїРёСЃРѕРє СЃС‚СЂР°РЅРёС†';
+$MESS['uplab.tilda_CLEAR_CACHE_CONFIRM'] = 'РЈРґР°Р»РёС‚СЊ РєСЌС€?';
+$MESS['uplab.tilda_CLEAR_CACHE_LIST_CONFIRM'] = 'РћР±РЅРѕРІРёС‚СЊ СЃРїРёСЃРѕРє СЃС‚СЂР°РЅРёС†?';
+$MESS['uplab.tilda_ADD_NEW_PAGE_MENU_TITLE'] = 'Р”РѕР±Р°РІРёС‚СЊ СЃС‚СЂР°РЅРёС†Сѓ';
 
-$MESS['uplab.tilda_CACHE_CLEARED'] = 'Кеш успешно удалён';
-$MESS['uplab.tilda_CACHE_LIST_CLEARED'] = 'Список страниц успешно обновлен';
+$MESS['uplab.tilda_CACHE_CLEARED'] = 'РљРµС€ СѓСЃРїРµС€РЅРѕ СѓРґР°Р»С‘РЅ';
+$MESS['uplab.tilda_CACHE_LIST_CLEARED'] = 'РЎРїРёСЃРѕРє СЃС‚СЂР°РЅРёС† СѓСЃРїРµС€РЅРѕ РѕР±РЅРѕРІР»РµРЅ';
 
-$MESS['uplab.tilda_PAGE_SELECT'] = 'Выбор страницы';
-$MESS['uplab.tilda_SELECT_PROJECT'] = 'Выберите проект:';
-$MESS['uplab.tilda_SELECT_PAGE'] = 'Выберите страницу:';
-$MESS['uplab.tilda_NO_TEMPLATE'] = 'Не выводить шаблон сайта:';
-$MESS['uplab.tilda_MOVE_TILDA_ASSETS'] = 'Перемещать стили и скрипты Tilda:';
-$MESS['uplab.tilda_MOVE_TILDA_ASSETS_NONE'] = 'не перемещать';
-$MESS['uplab.tilda_MOVE_TILDA_ASSETS_HEADEND'] = 'в конец области head';
-$MESS['uplab.tilda_MOVE_TILDA_ASSETS_BODYEND'] = 'в конец области body';
+$MESS['uplab.tilda_PAGE_SELECT'] = 'Р’С‹Р±РѕСЂ СЃС‚СЂР°РЅРёС†С‹';
+$MESS['uplab.tilda_SELECT_PROJECT'] = 'Р’С‹Р±РµСЂРёС‚Рµ РїСЂРѕРµРєС‚:';
+$MESS['uplab.tilda_SELECT_PAGE'] = 'Р’С‹Р±РµСЂРёС‚Рµ СЃС‚СЂР°РЅРёС†Сѓ:';
+$MESS['uplab.tilda_NO_TEMPLATE'] = 'РќРµ РІС‹РІРѕРґРёС‚СЊ С€Р°Р±Р»РѕРЅ СЃР°Р№С‚Р°:';
+$MESS['uplab.tilda_MOVE_TILDA_ASSETS'] = 'РџРµСЂРµРјРµС‰Р°С‚СЊ СЃС‚РёР»Рё Рё СЃРєСЂРёРїС‚С‹ Tilda:';
+$MESS['uplab.tilda_MOVE_TILDA_ASSETS_NONE'] = 'РЅРµ РїРµСЂРµРјРµС‰Р°С‚СЊ';
+$MESS['uplab.tilda_MOVE_TILDA_ASSETS_HEADEND'] = 'РІ РєРѕРЅРµС† РѕР±Р»Р°СЃС‚Рё head';
+$MESS['uplab.tilda_MOVE_TILDA_ASSETS_BODYEND'] = 'РІ РєРѕРЅРµС† РѕР±Р»Р°СЃС‚Рё body';
 
-$MESS['uplab.tilda_NO_PROJECTS'] = 'Нет ни одного проекта (страницы) или не указаны API ключи Тильда.';
-$MESS['uplab.tilda_NO_KEYS'] = 'Указать ключи';
+$MESS['uplab.tilda_NO_PROJECTS'] = 'РќРµС‚ РЅРё РѕРґРЅРѕРіРѕ РїСЂРѕРµРєС‚Р° (СЃС‚СЂР°РЅРёС†С‹) РёР»Рё РЅРµ СѓРєР°Р·Р°РЅС‹ API РєР»СЋС‡Рё РўРёР»СЊРґР°.';
+$MESS['uplab.tilda_NO_KEYS'] = 'РЈРєР°Р·Р°С‚СЊ РєР»СЋС‡Рё';
 
-$MESS['uplab.tilda_NO_MODULE'] = 'Модуль uplab.tilda не подключен';
+$MESS['uplab.tilda_NO_MODULE'] = 'РњРѕРґСѓР»СЊ uplab.tilda РЅРµ РїРѕРґРєР»СЋС‡РµРЅ';
 
-$MESS['uplab.tilda_PAGES'] = 'Страницы';
+$MESS['uplab.tilda_PAGES'] = 'РЎС‚СЂР°РЅРёС†С‹';
 
-$MESS['uplab.tilda_BASE_SETTINGS'] = 'Настройки соединения с Tilda';
-$MESS['uplab.tilda_TIMEOUT'] = 'Максимально позволенное количество секунд для выполнения cURL-функций.';
-$MESS['uplab.tilda_CONNECTTIMEOUT'] = 'Количество секунд ожидания при попытке соединения. Используйте 0 для бесконечного ожидания.';
+$MESS['uplab.tilda_BASE_SETTINGS'] = 'РќР°СЃС‚СЂРѕР№РєРё СЃРѕРµРґРёРЅРµРЅРёСЏ СЃ Tilda';
+$MESS['uplab.tilda_TIMEOUT'] = 'РњР°РєСЃРёРјР°Р»СЊРЅРѕ РїРѕР·РІРѕР»РµРЅРЅРѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ СЃРµРєСѓРЅРґ РґР»СЏ РІС‹РїРѕР»РЅРµРЅРёСЏ cURL-С„СѓРЅРєС†РёР№.';
+$MESS['uplab.tilda_CONNECTTIMEOUT'] = 'РљРѕР»РёС‡РµСЃС‚РІРѕ СЃРµРєСѓРЅРґ РѕР¶РёРґР°РЅРёСЏ РїСЂРё РїРѕРїС‹С‚РєРµ СЃРѕРµРґРёРЅРµРЅРёСЏ. РСЃРїРѕР»СЊР·СѓР№С‚Рµ 0 РґР»СЏ Р±РµСЃРєРѕРЅРµС‡РЅРѕРіРѕ РѕР¶РёРґР°РЅРёСЏ.';
+
+$MESS['uplab.tilda_SESSION_EXPIRED'] = 'Р’Р°С€Р° СЃРµСЃСЃРёСЏ РёСЃС‚РµРєР»Р°! РџРѕР¶Р°Р»СѓР№СЃС‚Р°, РїРµСЂРµРіСЂСѓР·РёС‚Рµ СЃС‚СЂР°РЅРёС†Сѓ.';

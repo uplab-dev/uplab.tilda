@@ -1,8 +1,8 @@
 <?php
-$MESS['uplab.tilda_PAGE_TITLE'] = 'Ñòðàíèöû';
-$MESS['uplab.tilda_HEADER_NAME'] = 'Íàçâàíèå';
-$MESS['uplab.tilda_HEADER_DATE'] = 'Äàòà';
-$MESS['uplab.tilda_HEADER_TAG'] = 'Òýã';
-$MESS['uplab.tilda_MENU_CLEAR_CACHE'] = 'Ñáðîñèòü êýø';
-$MESS['uplab.tilda_MENU_CLEAR_CACHE_COFIRM'] = 'Ñáðîñèòü êýø ñòðàíèöû?';
-$MESS['uplab.tilda_SEARCH_FIND'] = 'Íàéòè';
+$MESS['uplab.tilda_PAGE_TITLE'] = 'Ð¡Ñ‚Ñ€Ð°Ð½Ð¸Ñ†Ñ‹';
+$MESS['uplab.tilda_HEADER_NAME'] = 'ÐÐ°Ð·Ð²Ð°Ð½Ð¸Ðµ';
+$MESS['uplab.tilda_HEADER_DATE'] = 'Ð”Ð°Ñ‚Ð°';
+$MESS['uplab.tilda_HEADER_TAG'] = 'Ð¢ÑÐ³';
+$MESS['uplab.tilda_MENU_CLEAR_CACHE'] = 'Ð¡Ð±Ñ€Ð¾ÑÐ¸Ñ‚ÑŒ ÐºÑÑˆ';
+$MESS['uplab.tilda_MENU_CLEAR_CACHE_COFIRM'] = 'Ð¡Ð±Ñ€Ð¾ÑÐ¸Ñ‚ÑŒ ÐºÑÑˆ ÑÑ‚Ñ€Ð°Ð½Ð¸Ñ†Ñ‹?';
+$MESS['uplab.tilda_SEARCH_FIND'] = 'ÐÐ°Ð¹Ñ‚Ð¸';

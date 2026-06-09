@@ -3,7 +3,6 @@
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Main\HttpApplication;
 use Bitrix\Main\Loader;
-use Bitrix\Main\Config\Option;
 
 $request = HttpApplication::getInstance()->getContext()->getRequest();
 $moduleId = htmlspecialcharsbx($request["mid"] != "" ? $request["mid"] : $request["id"]);
@@ -45,7 +44,7 @@ $aTabs = array(
     )
 );
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && strlen($_REQUEST['save']) > 0 && check_bitrix_sessid()) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && strlen($_REQUEST['save']) > 0 && check_bitrix_sessid()) {
     foreach ($aTabs as $aTab) {
         __AdmSettingsSaveOptions($moduleId, $aTab['OPTIONS']);
     }

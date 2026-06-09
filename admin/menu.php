@@ -1,14 +1,14 @@
 <?php
 
-use Bitrix\Main\Loader;
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Main\Page\Asset;
 
 global $APPLICATION;
 
-Loader::includeModule("uplab.tilda");
+if (!\Bitrix\Main\Loader::includeModule('uplab.tilda')) {
+    return [];
+}
 
-CJSCore::Init('jquery');
 Asset::getInstance()->addJs("/bitrix/js/uplab.tilda/script.js");
 
 $aMenu = [
@@ -31,8 +31,8 @@ $aMenu = [
         [
             "text" => Loc::getMessage('uplab.tilda_CLEAR_CACHE_MENU_TITLE'),
             "url"  => "javascript:uTildaClearCache('" . Loc::getMessage("uplab.tilda_CLEAR_CACHE_CONFIRM") . "');",
-        ],
-    ],
+        ]
+    ]
 ];
 
 return $aMenu;

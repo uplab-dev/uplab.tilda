@@ -10,15 +10,15 @@ use Bitrix\Main\Localization\Loc;
 use Uplab\Tilda\Cache;
 use Uplab\Tilda\CacheTable;
 
-require_once($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_before.php');
+const ADMIN_MODULE_NAME = 'uplab.tilda';
 
-Loader::includeModule('uplab.tilda');
+require_once($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_before.php');
 
 global $APPLICATION;
 
 $userRights = $APPLICATION->GetGroupRight('uplab.tilda');
 
-if ($userRights === 'D') {
+if (!Loader::includeModule(ADMIN_MODULE_NAME) || $userRights < "R") {
     $APPLICATION->AuthForm(Loc::getMessage('ACCESS_DENIED'));
 }
 
@@ -27,9 +27,8 @@ $tableName = CacheTable::getTableName();
 $oSort = new CAdminSorting($tableName, 'NAME', 'asc');
 $lAdmin = new CAdminList($tableName, $oSort);
 
-
 /*
- * ??????
+ * Фильтр
  */
 function CheckFilter()
 {
@@ -55,9 +54,9 @@ if (CheckFilter()) {
 
 
 /*
- * ????????? ???????? ??? ???????
+ * Обработка действий над списком
  */
-if (($tags = $lAdmin->GroupAction()) && $userRights === 'W') {
+if (($tags = $lAdmin->GroupAction()) && $userRights === 'W' && check_bitrix_sessid()) {
     if ($lAdmin->IsGroupActionToAll()) {
         $tagsData = CacheTable::getList([
             'select' => ['TAG']
@@ -87,7 +86,7 @@ if (($tags = $lAdmin->GroupAction()) && $userRights === 'W') {
 
 
 /*
- * ????????? ????????? ??????
+ * Получение элементов списка
  */
 $queryParams = [];
 $queryParams['order'] = [
@@ -108,7 +107,7 @@ $lAdmin->NavText($pagesListDatabase->GetNavPrint(Loc::getMessage('tilda_XXX1')))
 
 
 /*
- * ?????????? ?????? ? ??????
+ * Подготовка списка к выводу
  */
 $lAdmin->AddHeaders([
     [
@@ -154,7 +153,7 @@ while ($pageDatabase = $pagesListDatabase->NavNext(false)) {
 
 
 /*
- * ?????? ???????
+ * Резюме таблицы
  */
 $lAdmin->AddFooter(
     [
@@ -172,7 +171,7 @@ $lAdmin->AddFooter(
 
 
 /*
- * ????????? ????????
+ * Групповые действия
  */
 $lAdmin->AddGroupActionTable([
     'delete' => Loc::getMessage('uplab.tilda_MENU_CLEAR_CACHE'),
@@ -180,7 +179,7 @@ $lAdmin->AddGroupActionTable([
 
 
 /*
- * ?????
+ * Вывод
  */
 $lAdmin->CheckListMode();
 
@@ -190,7 +189,7 @@ require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_a
 
 
 /*
- * ????? ???????
+ * Вывод фильтра
  */
 $oFilter = new CAdminFilter(
     $tableName . '_filter',
@@ -199,14 +198,15 @@ $oFilter = new CAdminFilter(
     ]
 );
 ?>
-    <form name="find_form" method="get" action="<?php echo $APPLICATION->GetCurPage(); ?>">
+    <form name="find_form" method="get" action="<?php
+    echo $APPLICATION->GetCurPage(); ?>">
         <?php
         $oFilter->Begin();
         ?>
         <tr>
-            <td><b><?php echo Loc::getMessage('uplab.tilda_SEARCH_FIND') ?>:</b></td>
+            <td><b><?= Loc::getMessage('uplab.tilda_SEARCH_FIND') ?>:</b></td>
             <td>
-                <input type="text" size="25" name="find" value="<?php echo htmlspecialcharsbx($find) ?>">
+                <input type="text" size="25" name="find" value="<?= htmlspecialcharsbx($find) ?>">
                 <?php
                 $arr = [
                     'reference'    => [

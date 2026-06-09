@@ -1,2 +1,2 @@
 <?php
-$MESS['uplab.tilda_ERROR_DATA'] = '[UPLAB_TILDA_DATA] Îøèáêà ïðè ïîëó÷åíèè äàííûõ';
+$MESS['uplab.tilda_ERROR_DATA'] = '[UPLAB_TILDA_DATA] ÐžÑˆÐ¸Ð±ÐºÐ° Ð¿Ñ€Ð¸ Ð¿Ð¾Ð»ÑƒÑ‡ÐµÐ½Ð¸Ð¸ Ð´Ð°Ð½Ð½Ñ‹Ñ…';
