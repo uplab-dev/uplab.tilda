@@ -1,5 +1,23 @@
 <?php
 
+/*
+ * Интеграция с Tilda (uplab.tilda) — модуль для CMS 1С-Битрикс
+ * Copyright (C) 2025  ООО «Аплэб»
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 namespace Uplab\Tilda;
 
 use Bitrix\Main\Localization\Loc;
@@ -110,7 +128,8 @@ class Request
             }
         }
 
-        $url = 'https://api.tildacdn.info/v1/' . rawurlencode($method) . '/?publickey=' . rawurlencode(Common::$publickey) . '&secretkey=' . rawurlencode(Common::$secretkey) . $paramsStr;
+        $baseUrl = rtrim(Common::$apiUrl, '/');
+        $url = $baseUrl . '/' . rawurlencode($method) . '/?publickey=' . rawurlencode(Common::$publickey) . '&secretkey=' . rawurlencode(Common::$secretkey) . $paramsStr;
 
         $cacheId = md5($url);
         $cacheDir = "/$method/";

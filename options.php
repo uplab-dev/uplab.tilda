@@ -29,6 +29,12 @@ $aTabs = array(
             ),
             Loc::getMessage('uplab.tilda_BASE_SETTINGS'),
             array(
+                'UPT_API_URL',
+                Loc::getMessage('uplab.tilda_API_URL'),
+                \Uplab\Tilda\Common::DEFAULT_API_URL,
+                array('text', 50),
+            ),
+            array(
                 'UPT_CURLOPT_TIMEOUT',
                 Loc::getMessage('uplab.tilda_TIMEOUT'),
                 15,
@@ -51,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && strlen($_REQUEST['save']) > 0 && ch
 
     LocalRedirect(
         $APPLICATION->GetCurPage() . '?lang=' . LANGUAGE_ID . '&mid_menu=1&mid=' . urlencode($moduleId) .
-        '&tabControl_active_tab=' . urlencode($_REQUEST['tabControl_active_tab']) . '&sid=' . urlencode($siteId)
+        '&tabControl_active_tab=' . urlencode($_REQUEST['tabControl_active_tab'] ?? '')
     );
 }
 

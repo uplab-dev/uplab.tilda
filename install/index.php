@@ -2,8 +2,10 @@
 
 use Bitrix\Main\Application;
 use Bitrix\Main\EventManager;
+use Bitrix\Main\Loader;
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Main\ModuleManager;
+use Uplab\Tilda\CacheTable;
 
 Loc::loadMessages(__FILE__);
 
@@ -32,7 +34,7 @@ class uplab_tilda extends CModule
     {
         global $APPLICATION;
 
-        if (!$this->isVersionD7()) {
+        if (!$this->areModuleRequirementsMet()) {
             $APPLICATION->ThrowException(Loc::getMessage("{$this->MODULE_ID}_MODULE_NO_D7_ERROR"));
 
             return false;
@@ -40,9 +42,10 @@ class uplab_tilda extends CModule
 
         $this->installEvents();
         $this->installFiles();
-        $this->installTables();
 
         ModuleManager::registerModule($this->MODULE_ID);
+
+        $this->installTables();
 
         return null;
     }
@@ -60,25 +63,26 @@ class uplab_tilda extends CModule
     {
         $connection = Application::getConnection();
 
-        $drop = "DROP TABLE IF EXISTS `tilda_pages_cache`;";
-        $create = "CREATE TABLE `tilda_pages_cache` (
-`TAG` CHAR(32) NOT NULL,
-`NAME` TEXT,
-`DATE` DATETIME,
-PRIMARY KEY (`TAG`)
-);";
+        if ($connection->isTableExists('tilda_pages_cache')) {
+            $connection->dropTable('tilda_pages_cache');
+        }
 
-        $connection->query($drop);
-        $connection->query($create);
+        // Таблицу создаём из ORM-сущности — DDL генерируется ядром под текущую
+        // СУБД (MySQL/PostgreSQL), без «сырого» MySQL-специфичного SQL.
+        // Модуль на этом этапе ещё не зарегистрирован, поэтому подключаем его
+        // явно, чтобы автозагрузился класс CacheTable.
+        Loader::includeModule($this->MODULE_ID);
+
+        CacheTable::getEntity()->createDbTable();
     }
 
     public function uninstallTables()
     {
         $connection = Application::getConnection();
 
-        $drop = "DROP TABLE IF EXISTS `tilda_pages_cache`;";
-
-        $connection->query($drop);
+        if ($connection->isTableExists('tilda_pages_cache')) {
+            $connection->dropTable('tilda_pages_cache');
+        }
     }
 
     public function installFiles()
@@ -185,11 +189,13 @@ PRIMARY KEY (`TAG`)
         );
     }
 
-    public function isVersionD7()
+    public function areModuleRequirementsMet()
     {
-        return CheckVersion(
+        // Требуется ядро >= 20.0
+        return version_compare(
             ModuleManager::getVersion("main"),
-            "14.00.00"
+            "20.00.00",
+            ">="
         );
     }
 

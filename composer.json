@@ -3,22 +3,25 @@
   "description": "Модуль для интеграции с Tilda",
   "homepage": "https://marketplace.1c-bitrix.ru/solutions/uplab.tilda/",
   "type": "bitrix-module",
+  "license": "GPL-3.0-or-later",
   "keywords": [
     "bitrix",
+    "1c-bitrix",
+    "bitrix-module",
     "tilda",
     "uplab"
   ],
   "authors": [
     {
-      "name": "Uplab",
-      "email": "info@uplab.ru",
-      "role": "Author"
+      "name": "ООО «Аплэб» (Uplab LLC)",
+      "role": "Правообладатель",
+      "homepage": "https://www.uplab.ru"
     }
   ],
-  "license": "MIT",
   "require": {
     "php": ">=7.4",
     "composer/installers": "~1",
-    "ext-curl": "*"
+    "ext-curl": "*",
+    "ext-mbstring": "*"
   }
 }

@@ -1,5 +1,23 @@
 <?php
 
+/*
+ * Интеграция с Tilda (uplab.tilda) — модуль для CMS 1С-Битрикс
+ * Copyright (C) 2025  ООО «Аплэб»
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 namespace Uplab\Tilda;
 
 use Bitrix\Main\Entity;
@@ -28,7 +46,8 @@ class CacheTable extends Entity\DataManager
 
     /**
      * Описывает поля сущности: `TAG` (первичный ключ, 32 символа),
-     * `NAME` (заголовок страницы) и `DATE` (дата кэширования).
+     * `NAME` (заголовок страницы), `PAGE_ID` (id страницы Tilda),
+     * `PROJECT_ID` (id проекта Tilda) и `DATE` (дата кэширования).
      *
      * @return Entity\Field[]
      * @throws \Bitrix\Main\SystemException
@@ -39,11 +58,14 @@ class CacheTable extends Entity\DataManager
             (new Entity\StringField('TAG'))
                 ->configurePrimary()
                 ->configureSize(32),
-            (new Entity\StringField('NAME'))
-                ->configureSize(255)
+            (new Entity\TextField('NAME'))
+                ->configureNullable(),
+            (new Entity\IntegerField('PAGE_ID'))
+                ->configureNullable(),
+            (new Entity\IntegerField('PROJECT_ID'))
                 ->configureNullable(),
             (new Entity\DatetimeField('DATE'))
-                ->configureNullable(),
+                ->configureNullable()
         ];
     }
 
@@ -55,7 +77,7 @@ class CacheTable extends Entity\DataManager
      */
     public static function addOrUpdate($data)
     {
-        if (!$data['TAG']) {
+        if (empty($data['TAG'])) {
             return false;
         }
 
