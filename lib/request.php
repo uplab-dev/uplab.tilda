@@ -61,17 +61,23 @@ class Request
             return false;
         }
 
+        $allowedMethods = ['getprojectslist', 'getpageslist', 'getpagefull'];
+
+        if (!in_array($method, $allowedMethods, true)) {
+            return false;
+        }
+
         Common::getOptions();
 
         $paramsStr = '';
 
         if (!empty($params)) {
             foreach ($params as $key => $value) {
-                $paramsStr .= '&' . $key . '=' . $value;
+                $paramsStr .= '&' . rawurlencode($key) . '=' . rawurlencode($value);
             }
         }
 
-        $url = 'https://api.tildacdn.info/v1/' . $method . '/?publickey=' . Common::$publickey . '&secretkey=' . Common::$secretkey . $paramsStr;
+        $url = 'https://api.tildacdn.info/v1/' . rawurlencode($method) . '/?publickey=' . rawurlencode(Common::$publickey) . '&secretkey=' . rawurlencode(Common::$secretkey) . $paramsStr;
 
         $cacheId = md5($url);
         $cacheDir = "/$method/";

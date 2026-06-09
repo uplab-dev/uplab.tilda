@@ -206,7 +206,7 @@ $oFilter = new CAdminFilter(
         <tr>
             <td><b><?php echo Loc::getMessage('uplab.tilda_SEARCH_FIND') ?>:</b></td>
             <td>
-                <input type="text" size="25" name="find" value="<?php echo htmlspecialchars($find) ?>">
+                <input type="text" size="25" name="find" value="<?php echo htmlspecialcharsbx($find) ?>">
                 <?php
                 $arr = [
                     'reference'    => [

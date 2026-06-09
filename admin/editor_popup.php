@@ -5,7 +5,13 @@ use Bitrix\Main\Context;
 use Uplab\Tilda\Common;
 use Bitrix\Main\Localization\Loc;
 
-require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/prolog_before.php");
+require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/prolog_admin_before.php");
+
+global $APPLICATION, $USER;
+
+if (!$USER->IsAuthorized() || $APPLICATION->GetGroupRight("uplab.tilda") < "R") {
+    $APPLICATION->AuthForm(Loc::getMessage("ACCESS_DENIED"));
+}
 
 CJSCore::Init("jquery");
 Loader::includeModule("uplab.tilda");
@@ -30,7 +36,7 @@ if (empty($arProjects)) {
                 <td class="bxcompprop-cont-table-r">
                     <select size="1" name="PROJECT" id="projects_select">
                         <?php foreach ($arProjects as $key => $value) { ?>
-                            <option value="<?= $key ?>"><?= $value ?></option>
+                            <option value="<?= htmlspecialcharsbx($key) ?>"><?= htmlspecialcharsbx($value) ?></option>
                         <?php } ?>
                     </select>
                 </td>
@@ -44,9 +50,9 @@ if (empty($arProjects)) {
                         <?php $j++; ?>
                         <?php $arPages = Common::getAssocPagesList($key); ?>
 
-                        <select size="1" name="PAGE_<?= $key ?>" id="page_select_<?= $key ?>" class="js-project-page" style="max-width: 453px; <?= ($j == 1) ? "" : "display: none;" ?>">
+                        <select size="1" name="PAGE_<?= htmlspecialcharsbx($key) ?>" id="page_select_<?= htmlspecialcharsbx($key) ?>" class="js-project-page" style="max-width: 453px; <?= ($j == 1) ? "" : "display: none;" ?>">
                             <?php foreach ($arPages as $id => $name) { ?>
-                                <option value="<?= $id ?>"><?= $name ?></option>
+                                <option value="<?= htmlspecialcharsbx($id) ?>"><?= htmlspecialcharsbx($name) ?></option>
                             <?php } ?>
                         </select>
 
@@ -107,8 +113,8 @@ if (empty($arProjects)) {
 $request = Context::getCurrent()->getRequest();
 
 if (!empty($request->get('PROJECT'))) {
-    $project = $request->get('PROJECT');
-    $page = $request->get('PAGE_' . $request->get('PROJECT'));
+    $project = (int) $request->get('PROJECT');
+    $page = (int) $request->get('PAGE_' . $project);
 
     $tagStr = "UPLABTILDA PROJECT={$project} PAGE={$page}";
 
@@ -130,10 +136,11 @@ if (!empty($request->get('PROJECT'))) {
         BX.WindowManager.Get().Close();
 
         <?php // Insert a line into the visual editor ?>
-        window.tildaTag('[' + '<?= $tagStr ?>' + ']');
+        window.tildaTag('[' + '<?= CUtil::JSEscape($tagStr) ?>' + ']');
     </script>
     <?php
 }
 ?>
 
-<?php require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/epilog_after.php");
+<?php
+require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/epilog_admin.php");

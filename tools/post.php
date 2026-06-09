@@ -8,8 +8,15 @@ require $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_b
 
 $request = Bitrix\Main\Context::getCurrent()->getRequest();
 
+global $APPLICATION;
+
+if (!check_bitrix_sessid() || $APPLICATION->GetGroupRight('uplab.tilda') < 'W') {
+    http_response_code(403);
+    die(Loc::getMessage('ACCESS_DENIED'));
+}
+
 if (!Loader::includeModule('uplab.tilda')) {
-	die(Loc::getMessage('uplab.tilda_NO_MODULE'));
+    die(Loc::getMessage('uplab.tilda_NO_MODULE'));
 }
 
 if($request->get('clearCache') === 'Y') {
