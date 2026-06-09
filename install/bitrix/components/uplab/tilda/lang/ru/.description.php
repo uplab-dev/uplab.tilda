@@ -1,5 +1,5 @@
 <?php
 
-$MESS['NAME'] = 'Èíòåãðàöèÿ ñ Tilda';
+$MESS['NAME'] = 'Ð˜Ð½Ñ‚ÐµÐ³Ñ€Ð°Ñ†Ð¸Ñ Ñ Tilda';
 $MESS['DESCRIPTION'] = '';
 $MESS['PATH_NAME'] = 'Uplab';

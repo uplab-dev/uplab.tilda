@@ -1,6 +1,6 @@
 <?php
-$MESS['uplab.tilda_MODULE_NAME'] = 'Èíòåãðàöèÿ ñ Tilda';
-$MESS['uplab.tilda_MODULE_DESC'] = 'Ìîäóëü ïîçâîëÿåò äîáàâèòü ñòðàíèöû ñäåëàííûå íà Tilda íà âàø ñàéò';
-$MESS['uplab.tilda_PARTNER_NAME'] = 'Uplab';
+$MESS['uplab.tilda_MODULE_NAME'] = 'Ð˜Ð½Ñ‚ÐµÐ³Ñ€Ð°Ñ†Ð¸Ñ Ñ Tilda';
+$MESS['uplab.tilda_MODULE_DESC'] = 'ÐœÐ¾Ð´ÑƒÐ»ÑŒ Ð¿Ð¾Ð·Ð²Ð¾Ð»ÑÐµÑ‚ Ð´Ð¾Ð±Ð°Ð²Ð¸Ñ‚ÑŒ ÑÑ‚Ñ€Ð°Ð½Ð¸Ñ†Ñ‹ ÑÐ´ÐµÐ»Ð°Ð½Ð½Ñ‹Ðµ Ð½Ð° Tilda Ð½Ð° Ð²Ð°Ñˆ ÑÐ°Ð¹Ñ‚';
+$MESS['uplab.tilda_PARTNER_NAME'] = 'Uplab. Digital & Design';
 $MESS['uplab.tilda_PARTNER_URI'] = 'https://www.uplab.ru';
-$MESS['uplab.tilda_MODULE_NO_D7_ERROR'] = 'Èçâèíèòå, äàííàÿ âåðñèÿ 1Ñ-Áèòðèêñ íå ïîääåðæèâàåòñÿ. Äëÿ ðàáîòû ñ ìîäóëåì îáíîâèòå 1Ñ-Áèòðèêñ äî àêòóàëüíîé âåðñèè.';
+$MESS['uplab.tilda_MODULE_NO_D7_ERROR'] = 'Ð˜Ð·Ð²Ð¸Ð½Ð¸Ñ‚Ðµ, Ð´Ð°Ð½Ð½Ð°Ñ Ð²ÐµÑ€ÑÐ¸Ñ 1Ð¡-Ð‘Ð¸Ñ‚Ñ€Ð¸ÐºÑ Ð½Ðµ Ð¿Ð¾Ð´Ð´ÐµÑ€Ð¶Ð¸Ð²Ð°ÐµÑ‚ÑÑ. Ð”Ð»Ñ Ñ€Ð°Ð±Ð¾Ñ‚Ñ‹ Ñ Ð¼Ð¾Ð´ÑƒÐ»ÐµÐ¼ Ð¾Ð±Ð½Ð¾Ð²Ð¸Ñ‚Ðµ 1Ð¡-Ð‘Ð¸Ñ‚Ñ€Ð¸ÐºÑ Ð´Ð¾ Ð°ÐºÑ‚ÑƒÐ°Ð»ÑŒÐ½Ð¾Ð¹ Ð²ÐµÑ€ÑÐ¸Ð¸.';

@@ -5,12 +5,32 @@ namespace Uplab\Tilda;
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Main\Config\Option;
 
+/**
+ * HTTP-клиент для обращений к Tilda API.
+ *
+ * Выполняет запросы через cURL (с откатом на `file_get_contents`), проверяет
+ * метод по allowlist, экранирует параметры через `rawurlencode()` и
+ * делегирует кэширование ответа классу {@see Cache}.
+ *
+ * @package Uplab\Tilda
+ */
 class Request
 {
+    /**
+     * Выполняет GET-запрос по указанному URL.
+     *
+     * Использует cURL, если расширение доступно (с таймаутами из настроек
+     * модуля `UPT_CURLOPT_CONNECTTIMEOUT`/`UPT_CURLOPT_TIMEOUT`), иначе
+     * `file_get_contents`. Ошибки транспорта логируются через
+     * {@see Helper::notifyError()}.
+     *
+     * @param string $url Полный URL запроса.
+     * @return string|false Тело ответа либо false при ошибке.
+     */
     public static function makeRequest($url)
     {
-        $connectTimeout = (int)Option::get("uplab.tilda", "UPT_CURLOPT_CONNECTTIMEOUT");
-        $timeout = (int)Option::get("uplab.tilda", "UPT_CURLOPT_TIMEOUT");
+        $connectTimeout = (int)Option::get("uplab.tilda", "UPT_CURLOPT_CONNECTTIMEOUT", 15);
+        $timeout = (int)Option::get("uplab.tilda", "UPT_CURLOPT_TIMEOUT", 15);
 
         if (function_exists('curl_init')) {
             $options = [
@@ -55,6 +75,19 @@ class Request
         return $content;
     }
 
+    /**
+     * Формирует URL запроса к Tilda API и возвращает закэшированный результат.
+     *
+     * Метод проверяется по allowlist (`getprojectslist`, `getpageslist`,
+     * `getpagefull`); ключи API и параметры экранируются через
+     * `rawurlencode()`. Для запросов отдельных страниц (`getpagefull` и т.п.)
+     * кэш складывается в каталог по хэшу URL и регистрируется в таблице
+     * {@see CacheTable}; списки кэшируются по имени метода.
+     *
+     * @param string|null $method Метод API из allowlist.
+     * @param array       $params Дополнительные GET-параметры запроса.
+     * @return array|false Поле `result` ответа Tilda, пустой массив или false при недопустимом методе.
+     */
     public static function getData($method = null, $params = [])
     {
         if ($method === null) {

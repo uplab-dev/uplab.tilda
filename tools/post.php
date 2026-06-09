@@ -4,29 +4,43 @@ use Bitrix\Main\Loader;
 use Bitrix\Main\Localization\Loc;
 use Uplab\Tilda\Cache;
 
-require $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_before.php';
+const STOP_STATISTICS = true;
+const NO_AGENT_CHECK = true;
+const DisableEventsCheck = true;
+const BX_SECURITY_SHOW_MESSAGE = true;
+const PUBLIC_AJAX_MODE = true;
+const NOT_CHECK_PERMISSIONS = true;
+const ADMIN_MODULE_NAME = 'uplab.tilda';
 
-$request = Bitrix\Main\Context::getCurrent()->getRequest();
+require_once($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/prolog_admin_before.php");
+
+header('Content-Type: application/x-javascript; charset=' . LANG_CHARSET);
 
 global $APPLICATION;
+global $USER;
 
-if (!check_bitrix_sessid() || $APPLICATION->GetGroupRight('uplab.tilda') < 'W') {
-    http_response_code(403);
-    die(Loc::getMessage('ACCESS_DENIED'));
+if (!Loader::includeModule(ADMIN_MODULE_NAME)) {
+    \CMain::FinalActions(Loc::getMessage('uplab.tilda_NO_MODULE'));
 }
 
-if (!Loader::includeModule('uplab.tilda')) {
-    die(Loc::getMessage('uplab.tilda_NO_MODULE'));
+if (!$USER->IsAuthorized() || $APPLICATION->GetGroupRight(ADMIN_MODULE_NAME) < 'W') {
+    \CMain::FinalActions(Loc::getMessage('ACCESS_DENIED'));
 }
 
-if($request->get('clearCache') === 'Y') {
-	Cache::clearAllCache();
-	echo Loc::getMessage('uplab.tilda_CACHE_CLEARED');
-	die();
+if (check_bitrix_sessid()) {
+    $request = Bitrix\Main\Context::getCurrent()->getRequest();
+
+    if ($request->get('clearCache') === 'Y') {
+        Cache::clearAllCache();
+        echo Loc::getMessage('uplab.tilda_CACHE_CLEARED');
+    }
+
+    if ($request->get('clearCacheList') === 'Y') {
+        Cache::clearListCache();
+        echo Loc::getMessage('uplab.tilda_CACHE_LIST_CLEARED');
+    }
+} else {
+    echo Loc::getMessage('uplab.tilda_SESSION_EXPIRED');
 }
 
-if($request->get('clearCacheList') === 'Y') {
-	Cache::clearListCache();
-	echo Loc::getMessage('uplab.tilda_CACHE_LIST_CLEARED');
-	die();
-}
+require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/epilog_admin_after.php");

@@ -1,2 +1,2 @@
 <?php
-$MESS['uplab.tilda_CHECK_PAGE'] = 'Âûáåðèòå ñòðàíèöó';
+$MESS['uplab.tilda_CHECK_PAGE'] = 'Ð’Ñ‹Ð±ÐµÑ€Ð¸Ñ‚Ðµ ÑÑ‚Ñ€Ð°Ð½Ð¸Ñ†Ñƒ';

@@ -6,13 +6,37 @@ use Bitrix\Main\Localization\Loc;
 
 Loc::loadMessages(__FILE__);
 
+/**
+ * Фасад для работы с данными Tilda Publishing: получение списков проектов и
+ * страниц, а также извлечение готового HTML-контента страницы в нужном режиме.
+ *
+ * Запросы к API проксируются через {@see Request}, результаты кэшируются
+ * ({@see Cache}), текст приводится к кодировке сайта через {@see Helper}.
+ *
+ * @package Uplab\Tilda
+ */
 class Common
 {
+    /** @var string Публичный ключ Tilda API (из настроек модуля). */
     public static $publickey;
+
+    /** @var string Секретный ключ Tilda API (из настроек модуля). */
     public static $secretkey;
+
+    /** @var string Идентификатор модуля. */
     public static $module_id = 'uplab.tilda';
+
+    /** @var bool Флаг однократной загрузки ключей API (см. {@see Common::getOptions()}). */
     public static $inc = false;
 
+    /**
+     * Однократно загружает ключи Tilda API из настроек модуля в статические
+     * свойства {@see Common::$publickey} и {@see Common::$secretkey}.
+     *
+     * Повторные вызовы игнорируются за счёт флага {@see Common::$inc}.
+     *
+     * @return void
+     */
     static function getOptions()
     {
         if (self::$inc) {
@@ -23,6 +47,16 @@ class Common
         self::$secretkey = \COption::GetOptionString(self::$module_id, "UPT_SECRET_KEY");
     }
 
+    /**
+     * Возвращает список проектов Tilda (метод API `getprojectslist`).
+     *
+     * Результат кэшируется в статической переменной на время запроса.
+     * Поля `title` и `descr` приводятся к нужной кодировке, из `title`
+     * вырезаются кавычки.
+     *
+     * @param bool $unicode Если false — текстовые поля конвертируются в windows-1251.
+     * @return array|false Список проектов либо false при ошибке запроса.
+     */
     public static function getProjects($unicode = true)
     {
         static $projectsList = false;
@@ -46,6 +80,16 @@ class Common
         return $projectsList;
     }
 
+    /**
+     * Возвращает список страниц проекта Tilda (метод API `getpageslist`).
+     *
+     * Поля `title` и `descr` приводятся к нужной кодировке, из `title`
+     * вырезаются кавычки.
+     *
+     * @param int|string|false $projectId Идентификатор проекта Tilda.
+     * @param bool             $unicode   Если false — текстовые поля конвертируются в windows-1251.
+     * @return array Список страниц (пустой массив, если проект не задан).
+     */
     public static function getPages($projectId = false, $unicode = true)
     {
         if (empty($projectId)) {
@@ -65,6 +109,14 @@ class Common
         return $pagesList;
     }
 
+    /**
+     * Возвращает список страниц проекта в виде ассоциативного массива
+     * `id => title`, пригодного для выпадающих списков в админке.
+     *
+     * @param int|string|false $projectId Идентификатор проекта Tilda.
+     * @param bool             $unicode   Если false — заголовки конвертируются в windows-1251.
+     * @return array Массив вида [id страницы => заголовок].
+     */
     public static function getAssocPagesList($projectId = false, $unicode = true)
     {
         if (empty($projectId)) {
@@ -85,6 +137,12 @@ class Common
         return $arPages;
     }
 
+    /**
+     * Возвращает список проектов в виде ассоциативного массива `id => title`,
+     * пригодного для выпадающих списков в админке.
+     *
+     * @return array Массив вида [id проекта => заголовок].
+     */
     public static function getAssocProjectsList()
     {
         $arProjects = array();
@@ -99,6 +157,20 @@ class Common
         return $arProjects;
     }
 
+    /**
+     * Получает HTML страницы Tilda для режима «по умолчанию» (контент
+     * встраивается в шаблон сайта).
+     *
+     * Из ответа API (`getpagefull`) извлекаются ассеты `<head>` (стили и
+     * скрипты) и содержимое `<body>`. Если `<body>` не распарсился —
+     * применяется fallback-извлечение контейнера `<div id="allrecords">`.
+     * Результат оборачивается в маркеры `<!--<TILDA>-->...<!--</TILDA>-->`,
+     * после чего вызывается событие `onBeforeContentReplace`.
+     *
+     * @param int   $page   Идентификатор страницы Tilda.
+     * @param array $params Параметры тега `[UPLABTILDA ...]` (зарезервировано).
+     * @return string Готовый HTML-фрагмент либо пустая строка.
+     */
     static function getPageContent($page, $params = array())
     {
         $data = Request::getData('getpagefull', ['pageid' => $page]);
@@ -175,6 +247,17 @@ class Common
         return $content;
     }
 
+    /**
+     * Получает полный HTML страницы Tilda для режима «без шаблона сайта»
+     * (`HIDEPAGETEMPLATE=Y`).
+     *
+     * Возвращается весь документ из ответа API без выделения `<head>`/`<body>`,
+     * приведённый к кодировке сайта; затем вызывается событие
+     * `onBeforeContentReplace`.
+     *
+     * @param int $page Идентификатор страницы Tilda.
+     * @return string Полный HTML страницы либо пустая строка.
+     */
     static function getPageFullContent($page)
     {
         $data = Request::getData('getpagefull', ['pageid' => $page]);
@@ -190,6 +273,20 @@ class Common
         return $content;
     }
 
+    /**
+     * Получает HTML страницы Tilda, разделённый на ассеты и тело, для режима
+     * с выносом ресурсов (`MOVERESOURCESTO=HEADEND|BODYEND`).
+     *
+     * Из ответа API извлекаются ассеты `<head>` (стили `<link>`/`<style>` и
+     * скрипты `<script>`) и содержимое `<body>` (с fallback по
+     * `<div id="allrecords">`); из тела вырезаются `<style>` и `<script>`,
+     * чтобы они не дублировались. Обе части оборачиваются в маркеры
+     * `<!--<TILDA>-->...<!--</TILDA>-->`; для тела вызывается событие
+     * `onBeforeContentReplace`.
+     *
+     * @param int $page Идентификатор страницы Tilda.
+     * @return array{assets: string, html: string} Ассеты для вставки в head/body и HTML тела.
+     */
     static function getPageParts($page)
     {
         $data = Request::getData('getpagefull', ['pageid' => $page]);
