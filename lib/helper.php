@@ -94,10 +94,9 @@ class Helper
      * ({@see \CAdminNotify}) и пишет запись в журнал событий
      * ({@see \CEventLog}, тип `UPLAB_TILDA_DATA`).
      *
-     * Уведомление намеренно обычного типа, а не «красной» ошибки: это сбой
-     * загрузки внешнего контента, а не поломка сайта. Текст сообщения при этом
-     * не обещает, что остальные страницы в порядке, — страница может целиком
-     * приходить из Tilda (`HIDEPAGETEMPLATE=Y`).
+     * Тип уведомления — `TYPE_ERROR`: только он рисуется красной плашкой
+     * (`adm-warning-block-red`), а `TYPE_NORMAL` ядро показывает зелёным блоком
+     * с галкой, из-за чего сообщение о сбое читалось как успешное действие.
      *
      * @param string $message Текст ошибки.
      * @return void
@@ -109,7 +108,7 @@ class Helper
         // в админке как HTML — поэтому внешнюю часть экранируем. В журнал
         // событий уходит исходный текст: там экранирует ядро при выводе.
         \CAdminNotify::Add([
-            'NOTIFY_TYPE'  => \CAdminNotify::TYPE_NORMAL,
+            'NOTIFY_TYPE'  => \CAdminNotify::TYPE_ERROR,
             'MESSAGE'      => Loc::getMessage('uplab.tilda_ERROR_REQUEST', [
                 '#MESSAGE#' => htmlspecialcharsbx((string)$message),
             ]),
@@ -139,11 +138,15 @@ class Helper
      * устранена, вызовите {@see Helper::clearNotifyOnce()} — тогда при повторном
      * появлении проблемы уведомление покажется снова.
      *
-     * @param string $key     Короткий идентификатор состояния (например, `API_URL`).
-     * @param string $message Текст уведомления.
+     * @param string $key        Короткий идентификатор состояния (например, `API_URL`).
+     * @param string $message    Текст уведомления.
+     * @param string $notifyType Тип уведомления {@see \CAdminNotify}; по умолчанию
+     *                           `TYPE_ERROR` — красная плашка. `TYPE_NORMAL` ядро
+     *                           рисует зелёным блоком с галкой, для сообщения
+     *                           о проблеме это вводит в заблуждение.
      * @return void
      */
-    public static function notifyOnce($key, $message)
+    public static function notifyOnce($key, $message, $notifyType = null)
     {
         $optionName = 'UPT_NOTIFIED_' . $key;
         $hash = md5($message);
@@ -155,7 +158,7 @@ class Helper
         Option::set(Common::$module_id, $optionName, $hash);
 
         \CAdminNotify::Add([
-            'NOTIFY_TYPE'  => \CAdminNotify::TYPE_NORMAL,
+            'NOTIFY_TYPE'  => $notifyType ?: \CAdminNotify::TYPE_ERROR,
             'MESSAGE'      => $message,
             'TAG'          => Common::$module_id . 'once' . $key,
             'MODULE_ID'    => Common::$module_id,

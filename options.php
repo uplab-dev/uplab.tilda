@@ -28,6 +28,10 @@ $logDir = \Uplab\Tilda\Diag\Logger::getLogDir();
 // Модуль пишет в этот каталог только свои tilda_*.log — всё остальное показываем,
 // чтобы посторонние файлы не лежали там незамеченными.
 $foreignLogFiles = \Uplab\Tilda\Diag\Logger::findForeignFiles();
+// До 3.3.2 журнал вёлся посуточными файлами, и они не удалялись. Модуль их не
+// трогает (журнал может понадобиться для разбора инцидента), поэтому показываем
+// занятое ими место — удалить можно кнопкой «Очистить логи».
+$legacyLogs = \Uplab\Tilda\Diag\Logger::findLegacyLogs();
 
 // Если сохранённый адрес API отклонён проверкой, модуль молча работает через
 // адрес по умолчанию — предупреждаем об этом прямо на странице настроек.
@@ -133,6 +137,14 @@ $aTabs = [
                         ? '<br>' . htmlspecialcharsbx(
                             Loc::getMessage('uplab.tilda_LOG_DIR_FOREIGN', [
                                 '#FILES#' => implode(', ', $foreignLogFiles),
+                            ])
+                        )
+                        : '')
+                    . ($legacyLogs['count'] > 0
+                        ? '<br>' . htmlspecialcharsbx(
+                            Loc::getMessage('uplab.tilda_LOG_DIR_LEGACY', [
+                                '#COUNT#' => $legacyLogs['count'],
+                                '#SIZE#'  => CFile::FormatSize($legacyLogs['size']),
                             ])
                         )
                         : ''),
