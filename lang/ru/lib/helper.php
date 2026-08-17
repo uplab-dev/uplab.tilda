@@ -1,2 +1,2 @@
 <?php
-$MESS['uplab.tilda_ERROR_REQUEST'] = 'Произошла ошибка при получении данных:<br>#MESSAGE#<br>Подробнее в <a href="/bitrix/admin/event_log.php?set_filter=Y&find_type=audit_type_id&find_audit_type[]=UPLAB_TILDA_DATA">системном журнале</a>';
+$MESS['uplab.tilda_ERROR_REQUEST'] = 'Модуль «Интеграция с Tilda» (uplab.tilda): не удалось загрузить контент из Tilda, подробности — в <a href="/bitrix/admin/event_log.php?set_filter=Y&amp;find_type=audit_type_id&amp;find_audit_type[]=UPLAB_TILDA_DATA">журнале событий</a>.<br>„#MESSAGE#“';

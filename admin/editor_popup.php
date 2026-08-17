@@ -37,7 +37,7 @@ require_once($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/prolog_ad
 global $APPLICATION, $USER;
 
 if (!Loader::includeModule(ADMIN_MODULE_NAME)) {
-    \CMain::FinalActions(Loc::getMessage('uplab.tilda_NO_MODULE'));
+    \CMain::FinalActions(Loc::getMessage('ACCESS_DENIED'));
 }
 
 if (!$USER->IsAuthorized() || $APPLICATION->GetGroupRight(ADMIN_MODULE_NAME) < "R") {

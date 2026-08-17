@@ -23,7 +23,9 @@ use Bitrix\Main\Localization\Loc;
 use Bitrix\Main\Application;
 use Bitrix\Main\Context;
 use Bitrix\Main\Engine\Response\Json;
-use Uplab\Tilda\Cache;
+use Uplab\Tilda\Diag\Logger;
+use Uplab\Tilda\Request;
+use Uplab\Tilda\Service\Cache;
 
 const STOP_STATISTICS = true;
 const NO_AGENT_CHECK = true;
@@ -52,12 +54,49 @@ if (!Loader::includeModule(ADMIN_MODULE_NAME)) {
 
     if ($request->get('clearCache') === 'Y') {
         Cache::clearAllCache();
-        $status = 'success';
+        $status  = 'success';
         $message = Loc::getMessage('uplab.tilda_CACHE_CLEARED');
+
     } elseif ($request->get('clearCacheList') === 'Y') {
         Cache::clearListCache();
-        $status = 'success';
+        $status  = 'success';
         $message = Loc::getMessage('uplab.tilda_CACHE_LIST_CLEARED');
+
+    } elseif ($request->get('clearLogs') === 'Y') {
+        $count   = Logger::clearLogs();
+        $status  = 'success';
+        $message = Loc::getMessage('uplab.tilda_LOGS_CLEARED', ['#COUNT#' => $count]);
+
+        // Чужие файлы намеренно не удаляем — вместо этого показываем их админу,
+        // чтобы кнопка «Очистить логи» не сносила то, что положили не мы.
+        $foreignFiles = Logger::findForeignFiles();
+        if ($foreignFiles) {
+            $message .= ' ' . Loc::getMessage('uplab.tilda_LOGS_CLEARED_FOREIGN', [
+                '#FILES#' => implode(', ', $foreignFiles),
+            ]);
+        }
+
+    } elseif ($request->get('checkConnection') === 'Y') {
+        $publicKey = trim((string)$request->getPost('publicKey'));
+        $secretKey = trim((string)$request->getPost('secretKey'));
+
+        if ($publicKey === '' || $secretKey === '') {
+            $message = Loc::getMessage('uplab.tilda_CHECK_CONN_EMPTY_KEYS');
+        } else {
+            $data = Request::checkConnection($publicKey, $secretKey);
+
+            if ($data === false) {
+                $message = Loc::getMessage('uplab.tilda_CHECK_CONN_CURL_ERROR');
+            } elseif ($data['status'] === 'FOUND') {
+                $count   = isset($data['result']) && is_array($data['result']) ? count($data['result']) : 0;
+                $status  = 'success';
+                $message = Loc::getMessage('uplab.tilda_CHECK_CONN_SUCCESS', ['#COUNT#' => $count]);
+            } else {
+                $apiMsg  = isset($data['message']) ? ': ' . $data['message'] : '';
+                $message = Loc::getMessage('uplab.tilda_CHECK_CONN_API_ERROR') . $apiMsg;
+            }
+        }
+
     } else {
         $message = Loc::getMessage('uplab.tilda_UNKNOWN_ACTION');
     }

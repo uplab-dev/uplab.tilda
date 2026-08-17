@@ -22,6 +22,7 @@ namespace Uplab\Tilda;
 
 use Bitrix\Main\Config\Option;
 use Bitrix\Main\Localization\Loc;
+use Uplab\Tilda\Diag\Logger;
 
 Loc::loadMessages(__FILE__);
 
@@ -55,8 +56,8 @@ class Common
     public static $inc = false;
 
     /**
-     * Однократно загружает ключи Tilda API из настроек модуля в статические
-     * свойства {@see Common::$publickey} и {@see Common::$secretkey}.
+     * Однократно загружает настройки доступа к Tilda API в статические свойства
+     * {@see Common::$publickey}, {@see Common::$secretkey} и {@see Common::$apiUrl}.
      *
      * Повторные вызовы игнорируются за счёт флага {@see Common::$inc}.
      *
@@ -71,8 +72,75 @@ class Common
         self::$publickey = Option::get(self::$module_id, "UPT_PUBLIC_KEY");
         self::$secretkey = Option::get(self::$module_id, "UPT_SECRET_KEY");
 
-        $apiUrl = trim(Option::get(self::$module_id, "UPT_API_URL", self::DEFAULT_API_URL));
-        self::$apiUrl = ($apiUrl !== '') ? $apiUrl : self::DEFAULT_API_URL;
+        // Проверка адреса API (HTTPS + домен Tilda) живёт в одном месте — в Request.
+        self::$apiUrl = Request::resolveApiUrl();
+    }
+
+    /**
+     * Возвращает сырые данные списка проектов из Tilda API без какой-либо
+     * обработки текстовых полей.
+     *
+     * В отличие от {@see Common::getProjects()}, заголовки и описания проектов
+     * не очищаются от кавычек и не конвертируются по кодировке — данные
+     * возвращаются ровно такими, какими их отдаёт Tilda API (поле `result`
+     * ответа метода `getprojectslist`).
+     *
+     * @return array Список проектов или пустой массив при ошибке.
+     */
+    public static function getRawProjectsData()
+    {
+        self::getOptions();
+        Logger::debug('getRawProjectsData called');
+        return Request::getData('getprojectslist');
+    }
+
+    /**
+     * Возвращает сырые данные списка страниц проекта из Tilda API без
+     * какой-либо обработки текстовых полей.
+     *
+     * В отличие от {@see Common::getPages()}, заголовки и описания страниц
+     * не очищаются от кавычек и не конвертируются по кодировке — данные
+     * возвращаются ровно такими, какими их отдаёт Tilda API (поле `result`
+     * ответа метода `getpageslist`).
+     *
+     * @param int|string $projectId Идентификатор проекта Tilda.
+     * @return array Список страниц или пустой массив при ошибке или пустом $projectId.
+     */
+    public static function getRawPagesData($projectId)
+    {
+        if (empty($projectId)) {
+            return [];
+        }
+        self::getOptions();
+        Logger::debug('getRawPagesData called', ['projectId' => $projectId]);
+        return Request::getData('getpageslist', ['projectid' => $projectId]);
+    }
+
+    /**
+     * Возвращает сырые данные страницы из Tilda API без какой-либо обработки.
+     *
+     * В отличие от {@see Common::getPageContent()} и смежных методов, HTML
+     * страницы не разбирается, ассеты не вычленяются, кодировка не
+     * конвертируется — возвращается поле `result` ответа метода `getpagefull`
+     * напрямую. Типичные ключи результата:
+     * - `id`, `title`, `descr`, `alias`, `date` — метаданные страницы;
+     * - `html` — полный HTML документа;
+     * - `js`, `css`, `images` — массивы подключённых ресурсов;
+     * - `projectid` — идентификатор проекта.
+     *
+     * Ответ кэшируется так же, как и при вызове через тег `[UPLABTILDA ...]`.
+     *
+     * @param int|string $pageId Идентификатор страницы Tilda.
+     * @return array Данные страницы или пустой массив при ошибке или пустом $pageId.
+     */
+    public static function getRawPageData($pageId)
+    {
+        if (empty($pageId)) {
+            return [];
+        }
+        self::getOptions();
+        Logger::debug('getRawPageData called', ['pageId' => $pageId]);
+        return Request::getData('getpagefull', ['pageid' => $pageId]);
     }
 
     /**
@@ -201,6 +269,7 @@ class Common
      */
     static function getPageContent($page, $params = array())
     {
+        Logger::debug('getPageContent called', ['pageId' => $page]);
         $data = Request::getData('getpagefull', ['pageid' => $page]);
 
         $content = '';
@@ -245,6 +314,8 @@ class Common
 
             // Fallback: extract #allrecords container if <body> regex failed
             if (empty($html)) {
+                Logger::warning('Body not parsed, trying #allrecords fallback', ['pageId' => $page]);
+
                 $pos = stripos($data['html'], '<div id="allrecords"');
                 if ($pos !== false) {
                     $endBodyPos = strripos($data['html'], '</body>');
@@ -259,6 +330,12 @@ class Common
                 $content .= $html;
             }
         }
+
+        Logger::debug('getPageContent result', [
+            'pageId' => $page,
+            'source' => strlen((string)($data['html'] ?? '')) . ' bytes',
+            'output' => strlen($content) . ' bytes',
+        ]);
 
         // Include page content
         if (!empty($content)) {
@@ -288,6 +365,7 @@ class Common
      */
     static function getPageFullContent($page)
     {
+        Logger::debug('getPageFullContent called', ['pageId' => $page]);
         $data = Request::getData('getpagefull', ['pageid' => $page]);
 
         $content = '';
@@ -297,6 +375,11 @@ class Common
 
             Helper::checkEventBeforeContentReplace($content);
         }
+
+        Logger::debug('getPageFullContent result', [
+            'pageId' => $page,
+            'output' => strlen($content) . ' bytes',
+        ]);
 
         return $content;
     }
@@ -317,6 +400,7 @@ class Common
      */
     static function getPageParts($page)
     {
+        Logger::debug('getPageParts called', ['pageId' => $page]);
         $data = Request::getData('getpagefull', ['pageid' => $page]);
 
         $module_version = "";
@@ -372,6 +456,8 @@ class Common
 
             // Fallback: extract #allrecords container if <body> regex failed
             if (empty($html)) {
+                Logger::warning('Body not parsed, trying #allrecords fallback', ['pageId' => $page]);
+
                 $pos = stripos($data['html'], '<div id="allrecords"');
                 if ($pos !== false) {
                     $endBodyPos = strripos($data['html'], '</body>');
@@ -390,9 +476,16 @@ class Common
             $html = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', '', $html);
 
             $html = "<!--<TILDA ver=\"{$module_version}\">-->{$html}<!--</TILDA>-->";
+
+            Helper::checkEventBeforeContentReplace($html);
         }
 
-        Helper::checkEventBeforeContentReplace($html);
+        Logger::debug('getPageParts result', [
+            'pageId' => $page,
+            'source' => strlen((string)($data['html'] ?? '')) . ' bytes',
+            'assets' => strlen($assetsString) . ' bytes',
+            'html'   => strlen($html) . ' bytes',
+        ]);
 
         return [
             'assets' => $assetsString,

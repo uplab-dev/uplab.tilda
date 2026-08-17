@@ -21,6 +21,7 @@
 namespace Uplab\Tilda;
 
 use Bitrix\Main\Application;
+use Uplab\Tilda\Diag\Logger;
 use Uplab\Tilda\Enum\MoveResourcesTarget;
 
 /**
@@ -57,6 +58,11 @@ class Replace
 
         // Replace all occurrences of tag [UPLABTILDA ... ]
         if (preg_match_all("/\[(UPLABTILDA [^\]]+)\]/", $content, $matches)) {
+            Logger::debug('Tilda tags found on page', [
+                'count' => count($matches[1]),
+                'uri'   => $request->getRequestUri(),
+            ]);
+
             if (is_array($matches[1])) {
                 foreach ($matches[1] as $k => $match) {
                     $content = self::replaceContent($content, $match, $matches[0][$k]);
@@ -104,17 +110,23 @@ class Replace
             $params[$key] = $keyValue[1] ?? '';
         }
 
+        $pageId = (int)($params['PAGE'] ?? 0);
+
         if (
             !empty($params['HIDEPAGETEMPLATE']) &&
             $params['HIDEPAGETEMPLATE'] === "Y"
         ) {
             // Case: Don't display site template
-            $content = Common::getPageFullContent((int)$params['PAGE']);
+            Logger::debug('Replacing tag', ['pageId' => $pageId, 'mode' => 'HIDEPAGETEMPLATE']);
+
+            $content = Common::getPageFullContent($pageId);
         } else {
             $moveTarget = MoveResourcesTarget::fromMixed($params['MOVERESOURCESTO'] ?? '');
             if (MoveResourcesTarget::shouldMove($moveTarget)) {
                 // Case: Display site template case + replace Tilda tag + move Tilda assets
-                $parts = Common::getPageParts((int)$params['PAGE']);
+                Logger::debug('Replacing tag', ['pageId' => $pageId, 'mode' => 'MOVERESOURCESTO=' . $moveTarget]);
+
+                $parts = Common::getPageParts($pageId);
 
                 // Insert Tilda assets to the place defined by the tag (head/body end)
                 $content = MoveResourcesTarget::injectAssets($moveTarget, $content, $parts['assets']);
@@ -123,7 +135,9 @@ class Replace
                 $content = str_replace($tildaTag, $parts['html'], $content);
             } else {
                 // Case: Display site template case + replace Tilda tag
-                $html = Common::getPageContent((int)$params['PAGE'], $params);
+                Logger::debug('Replacing tag', ['pageId' => $pageId, 'mode' => 'default']);
+
+                $html = Common::getPageContent($pageId, $params);
 
                 $content = str_replace($tildaTag, $html, $content);
             }
