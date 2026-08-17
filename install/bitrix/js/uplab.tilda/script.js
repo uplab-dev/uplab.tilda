@@ -132,3 +132,53 @@ var uTildaClearCacheList = function(confirmMsg){
         uTildaRun({clearCacheList: "Y", sessid: BX.bitrix_sessid()});
     });
 };
+
+// Проверяет подключение к Tilda API с текущими значениями полей публичного и секретного ключей.
+// checkingMsg — текст кнопки на время запроса, emptyKeysMsg — сообщение о незаполненных ключах.
+var uTildaCheckConnection = function(checkingMsg, emptyKeysMsg){
+    var btn = document.getElementById('uTildaCheckConnectionBtn');
+    if (!btn || btn.disabled) {
+        return;
+    }
+
+    var publicKeyEl = document.querySelector('[name="UPT_PUBLIC_KEY"]');
+    var secretKeyEl = document.querySelector('[name="UPT_SECRET_KEY"]');
+
+    // Пустые ключи отсекаем на клиенте, чтобы не гонять заведомо ошибочный запрос.
+    if (!publicKeyEl || !secretKeyEl || !publicKeyEl.value.trim() || !secretKeyEl.value.trim()) {
+        uTildaNotify(emptyKeysMsg);
+        return;
+    }
+
+    btn.disabled = true;
+    var origText = btn.textContent !== undefined ? btn.textContent : btn.innerText;
+    if (checkingMsg) {
+        if (btn.textContent !== undefined) {
+            btn.textContent = checkingMsg;
+        } else {
+            btn.innerText = checkingMsg;
+        }
+    }
+
+    uTildaPost({
+        checkConnection: 'Y',
+        sessid: BX.bitrix_sessid(),
+        publicKey: publicKeyEl.value.trim(),
+        secretKey: secretKeyEl.value.trim()
+    }, function(response){
+        btn.disabled = false;
+        if (btn.textContent !== undefined) {
+            btn.textContent = origText;
+        } else {
+            btn.innerText = origText;
+        }
+        uTildaNotify(response.message);
+    });
+};
+
+// Запрашивает подтверждение и удаляет все файлы логов через AJAX.
+var uTildaClearLogs = function(confirmMsg){
+    uTildaConfirm(confirmMsg, function(){
+        uTildaRun({clearLogs: 'Y', sessid: BX.bitrix_sessid()});
+    });
+};

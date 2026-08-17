@@ -26,8 +26,8 @@
 use Bitrix\Main\Application;
 use Bitrix\Main\Loader;
 use Bitrix\Main\Localization\Loc;
-use Uplab\Tilda\Cache;
-use Uplab\Tilda\CacheTable;
+use Uplab\Tilda\Service\Cache;
+use Uplab\Tilda\Model\CacheTable;
 use Bitrix\Main\UI\AdminPageNavigation;
 use Bitrix\Main\UI\Filter;
 
@@ -192,7 +192,7 @@ while ($item = $entityList->fetch()) {
         $arActions[] = [
             'ICON'   => 'delete',
             'TEXT'   => Loc::getMessage('uplab.tilda_MENU_CLEAR_CACHE'),
-            'ACTION' => "if(confirm('" . Loc::getMessage('uplab.tilda_MENU_CLEAR_CACHE_COFIRM') . "')) " . $lAdmin->ActionDoGroup($itemId, 'delete')
+            'ACTION' => "if(confirm('" . CUtil::JSEscape(Loc::getMessage('uplab.tilda_MENU_CLEAR_CACHE_COFIRM')) . "')) " . $lAdmin->ActionDoGroup($itemId, 'delete')
         ];
     }
 

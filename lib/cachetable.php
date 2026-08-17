@@ -18,80 +18,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Uplab\Tilda;
-
-use Bitrix\Main\Entity;
-
-/**
- * ORM-сущность реестра закэшированных страниц Tilda (таблица
- * `tilda_pages_cache`).
+/*
+ * Псевдоним класса для обратной совместимости с версиями до 3.3.0, где
+ * ORM-сущность реестра страниц называлась \Uplab\Tilda\CacheTable.
  *
- * Хранит соответствие тега кэша странице (имя и дата кэширования) и
- * используется классом {@see Cache} для ведения списка закэшированных страниц
- * и их отображения/очистки в админке.
- *
- * @package Uplab\Tilda
+ * @deprecated 3.3.0 Используйте \Uplab\Tilda\Model\CacheTable.
  */
-class CacheTable extends Entity\DataManager
-{
-    /**
-     * Возвращает имя таблицы сущности.
-     *
-     * @return string
-     */
-    public static function getTableName()
-    {
-        return 'tilda_pages_cache';
-    }
 
-    /**
-     * Описывает поля сущности: `TAG` (первичный ключ, 32 символа),
-     * `NAME` (заголовок страницы), `PAGE_ID` (id страницы Tilda),
-     * `PROJECT_ID` (id проекта Tilda) и `DATE` (дата кэширования).
-     *
-     * @return Entity\Field[]
-     * @throws \Bitrix\Main\SystemException
-     */
-    public static function getMap()
-    {
-        return [
-            (new Entity\StringField('TAG'))
-                ->configurePrimary()
-                ->configureSize(32),
-            (new Entity\TextField('NAME'))
-                ->configureNullable(),
-            (new Entity\IntegerField('PAGE_ID'))
-                ->configureNullable(),
-            (new Entity\IntegerField('PROJECT_ID'))
-                ->configureNullable(),
-            (new Entity\DatetimeField('DATE'))
-                ->configureNullable()
-        ];
-    }
-
-    /**
-     * Добавляет новую запись о странице или обновляет существующую по тегу.
-     *
-     * @param array $data Данные записи; обязательно содержит ключ `TAG`.
-     * @return bool false, если тег не задан, иначе true.
-     */
-    public static function addOrUpdate($data)
-    {
-        if (empty($data['TAG'])) {
-            return false;
-        }
-
-        $row = self::getByPrimary($data['TAG'])->fetch();
-
-        if ($row) {
-            CacheTable::update(
-                $data['TAG'],
-                $data
-            );
-        } else {
-            CacheTable::add($data);
-        }
-
-        return true;
-    }
+if (!class_exists(\Uplab\Tilda\CacheTable::class, false)) {
+    class_alias(\Uplab\Tilda\Model\CacheTable::class, \Uplab\Tilda\CacheTable::class);
 }

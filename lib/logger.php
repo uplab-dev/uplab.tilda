@@ -19,13 +19,12 @@
  */
 
 /*
- * Псевдоним класса для обратной совместимости с версиями до 3.3.0, где
- * сервис кэширования назывался \Uplab\Tilda\Cache. Файл нужен и как точка
- * входа автозагрузки: ядро ищет класс \Uplab\Tilda\Cache именно в lib/cache.php.
+ * Псевдоним класса на случай обращения к логгеру по короткому имени
+ * \Uplab\Tilda\Logger.
  *
- * @deprecated 3.3.0 Используйте \Uplab\Tilda\Service\Cache.
+ * @deprecated 3.3.0 Используйте \Uplab\Tilda\Diag\Logger.
  */
 
-if (!class_exists(\Uplab\Tilda\Cache::class, false)) {
-    class_alias(\Uplab\Tilda\Service\Cache::class, \Uplab\Tilda\Cache::class);
+if (!class_exists(\Uplab\Tilda\Logger::class, false)) {
+    class_alias(\Uplab\Tilda\Diag\Logger::class, \Uplab\Tilda\Logger::class);
 }
