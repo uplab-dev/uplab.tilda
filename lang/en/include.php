@@ -30,6 +30,14 @@ $MESS['uplab.tilda_MOVE_TILDA_ASSETS_BODYEND'] = 'to the end of the body section
 $MESS['uplab.tilda_NO_PROJECTS'] = 'There are no projects (pages), or the Tilda API keys are not specified.';
 $MESS['uplab.tilda_NO_KEYS'] = 'Specify keys';
 
+$MESS['uplab.tilda_PAGES_LOADING'] = 'Loading the page list...';
+$MESS['uplab.tilda_PAGES_EMPTY'] = 'The project has no pages.';
+$MESS['uplab.tilda_PAGES_LOAD_ERROR'] = 'Failed to load the page list.';
+$MESS['uplab.tilda_PAGES_LOAD_TIMEOUT'] = 'Tilda did not respond in time. The page list was not loaded.';
+$MESS['uplab.tilda_PROJECTS_LOAD_ERROR'] = 'Failed to load the Tilda project list: #MESSAGE#';
+$MESS['uplab.tilda_RETRY'] = 'Retry';
+$MESS['uplab.tilda_PAGE_NOT_SELECTED'] = 'Select a page.';
+
 $MESS['uplab.tilda_NO_MODULE'] = 'The "Tilda Integration" module (uplab.tilda) is not installed';
 
 $MESS['uplab.tilda_PAGES'] = 'Pages';
@@ -39,6 +47,7 @@ $MESS['uplab.tilda_API_URL'] = 'Tilda API base URL (default https://api.tildacdn
 $MESS['uplab.tilda_API_URL_INVALID'] = 'The "Tilda Integration" module (uplab.tilda): the API address in the settings is invalid, using #URL#';
 $MESS['uplab.tilda_TIMEOUT'] = 'The maximum number of seconds allowed for cURL functions to execute.';
 $MESS['uplab.tilda_CONNECTTIMEOUT'] = 'The number of seconds to wait while trying to connect. Use 0 to wait indefinitely.';
+$MESS['uplab.tilda_LIST_CACHE_TTL'] = 'Cache lifetime for project and page lists, seconds. Defines how soon a new Tilda page shows up in the editor (page content is cached separately, for a week).';
 
 $MESS['uplab.tilda_SESSION_EXPIRED'] = 'Your session has expired! Please reload the page.';
 $MESS['uplab.tilda_UNKNOWN_ACTION'] = 'Unknown action.';

@@ -66,7 +66,7 @@ class Request
         }
 
         if ($apiUrl !== '') {
-            Logger::warning('API URL rejected, falling back to default', ['url' => Logger::maskUrl($apiUrl)]);
+            Logger::warning(Loc::getMessage('uplab.tilda_LOG_API_URL_REJECTED'), ['url' => Logger::maskUrl($apiUrl)]);
             Helper::notifyOnce(
                 'API_URL',
                 Loc::getMessage('uplab.tilda_API_URL_INVALID', ['#URL#' => Common::DEFAULT_API_URL])
@@ -117,6 +117,38 @@ class Request
     }
 
     /**
+     * Кратко описывает запрос к API для сообщений об ошибке: метод и
+     * идентификаторы проекта/страницы, без ключей доступа.
+     *
+     * Нужно, чтобы по записи в журнале событий было понятно, какая именно
+     * страница Tilda не загрузилась: одного URI страницы сайта мало, когда на
+     * сайте несколько тегов.
+     *
+     * @param string $url Полный URL запроса к Tilda API.
+     * @return string Например, `getpagefull, pageid=123456`.
+     */
+    public static function describeRequest($url)
+    {
+        $parts  = parse_url((string)$url);
+        $method = !empty($parts['path']) ? basename($parts['path']) : '';
+
+        $description = ($method !== '') ? $method : 'tilda api';
+
+        if (!empty($parts['query'])) {
+            $query = [];
+            parse_str($parts['query'], $query);
+
+            foreach (['projectid', 'pageid'] as $key) {
+                if (!empty($query[$key])) {
+                    $description .= ', ' . $key . '=' . (int)$query[$key];
+                }
+            }
+        }
+
+        return $description;
+    }
+
+    /**
      * Выполняет HTTPS GET-запрос по указанному URL.
      *
      * Использует cURL, если расширение доступно; ограничивает протоколы
@@ -132,7 +164,7 @@ class Request
         // Ensure only HTTPS is allowed regardless of what is stored in settings
         if (strncmp($url, 'https://', 8) !== 0) {
             Helper::notifyError(Loc::getMessage('uplab.tilda_ERROR_PROTOCOL'));
-            Logger::error('Blocked non-HTTPS request', ['url' => Logger::maskUrl($url)]);
+            Logger::error(Loc::getMessage('uplab.tilda_LOG_NON_HTTPS_BLOCKED'), ['url' => Logger::maskUrl($url)]);
             return false;
         }
 
@@ -174,16 +206,32 @@ class Request
                 $errorMsg  = curl_error($curl);
                 $errorMsg2 = curl_strerror($errorNumber);
 
-                Helper::notifyError(Loc::getMessage('uplab.tilda_ERROR_CURL') . $errorMsg . ' (' . $errorMsg2 . ') (' . $errorNumber . ')');
-                Logger::error('cURL request failed', [
-                    'errno' => $errorNumber,
-                    'error' => $errorMsg . ' (' . $errorMsg2 . ')',
-                    'url'   => Logger::maskUrl($url),
+                // Сколько успело прийти до обрыва — ключевая величина при
+                // разборе таймаутов: одинаковый размер от попытки к попытке
+                // означает, что поток встаёт на одном и том же месте, а не что
+                // сеть работает нестабильно.
+                $bytes    = (int)curl_getinfo($curl, CURLINFO_SIZE_DOWNLOAD);
+                $duration = (int)round(curl_getinfo($curl, CURLINFO_TOTAL_TIME) * 1000);
+                $request  = self::describeRequest($url);
+
+                Helper::notifyError(
+                    Loc::getMessage('uplab.tilda_ERROR_CURL') . $errorMsg . ' (' . $errorMsg2 . ') (' . $errorNumber . ')'
+                    . ' [' . $request . ', ' . $duration . ' ms, ' . $bytes . ' bytes]'
+                );
+                Logger::error(Loc::getMessage('uplab.tilda_LOG_CURL_FAILED'), [
+                    'request'     => $request,
+                    'errno'       => $errorNumber,
+                    'error'       => $errorMsg . ' (' . $errorMsg2 . ')',
+                    'http_code'   => $httpCode,
+                    'duration_ms' => $duration,
+                    'bytes'       => $bytes,
+                    'url'         => Logger::maskUrl($url),
                 ]);
 
                 $content = false;
             } else {
                 Logger::debug('HTTP response received', [
+                    'request'     => self::describeRequest($url),
                     'http_code'   => $httpCode,
                     'bytes'       => strlen((string)$content),
                     'duration_ms' => (int)round((microtime(true) - $startedAt) * 1000),
@@ -225,16 +273,23 @@ class Request
             }
 
             if ($content === false) {
-                Helper::notifyError(Loc::getMessage('uplab.tilda_ERROR_FGC'));
-                Logger::error('file_get_contents failed', [
-                    'http_code' => $httpCode,
-                    'url'       => Logger::maskUrl($url),
+                $duration = (int)round((microtime(true) - $startedAt) * 1000);
+                $request  = self::describeRequest($url);
+
+                Helper::notifyError(
+                    Loc::getMessage('uplab.tilda_ERROR_FGC') . ' [' . $request . ', ' . $duration . ' ms]'
+                );
+                Logger::error(Loc::getMessage('uplab.tilda_LOG_FGC_FAILED'), [
+                    'request'     => $request,
+                    'http_code'   => $httpCode,
+                    'duration_ms' => $duration,
+                    'url'         => Logger::maskUrl($url),
                 ]);
             } else {
                 if ($httpCode >= 300 && $httpCode < 400) {
                     // Ответ-редирект отдаётся как есть: разбор JSON ниже не пройдёт,
                     // поэтому явно объясняем причину в журнале.
-                    Logger::warning('Redirect not followed (fallback transport allows HTTPS target only)', [
+                    Logger::warning(Loc::getMessage('uplab.tilda_LOG_REDIRECT_NOT_FOLLOWED'), [
                         'http_code' => $httpCode,
                         'url'       => Logger::maskUrl($url),
                     ]);
@@ -273,7 +328,7 @@ class Request
 
         $data = json_decode($body, true);
         if (json_last_error() !== JSON_ERROR_NONE || !isset($data['status'])) {
-            Logger::error('Invalid API response on checkConnection', [
+            Logger::error(Loc::getMessage('uplab.tilda_LOG_CHECK_CONN_INVALID'), [
                 'json_error' => json_last_error_msg(),
                 'body'       => $body,
             ]);
@@ -314,12 +369,30 @@ class Request
         $cacheId    = md5($url);
         $cacheDir   = "/$method/";
         $noteInBase = false;
+        $ttl        = self::resolveListCacheTtl();
 
         if ($method !== ApiMethod::PROJECTS_LIST && $method !== ApiMethod::PAGES_LIST) {
             $cacheDir   = "/$cacheId/";
             $noteInBase = true;
+            $ttl        = Cache::DEFAULT_TTL;
         }
 
-        return Cache::cache($url, $cacheId, $cacheDir, $noteInBase);
+        return Cache::cache($url, $cacheId, $cacheDir, $noteInBase, $ttl);
+    }
+
+    /**
+     * Возвращает срок жизни кэша списков проектов и страниц.
+     *
+     * Списки кэшируются отдельно от контента и ненадолго: со сроком контента
+     * (неделя) страница, только что созданная в Tilda, не появляется в
+     * редакторе до ручной очистки кэша.
+     *
+     * @return int Секунды; при некорректной настройке — {@see Cache::DEFAULT_LIST_TTL}.
+     */
+    private static function resolveListCacheTtl()
+    {
+        $ttl = (int)Option::get('uplab.tilda', 'UPT_LIST_CACHE_TTL', Cache::DEFAULT_LIST_TTL);
+
+        return ($ttl > 0) ? $ttl : Cache::DEFAULT_LIST_TTL;
     }
 }

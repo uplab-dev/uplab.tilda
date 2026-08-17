@@ -22,52 +22,85 @@ namespace Uplab\Tilda\Service;
 
 use Bitrix\Main\Application;
 use Bitrix\Main\Data\Cache as BitrixCache;
+use Bitrix\Main\Localization\Loc;
 use Bitrix\Main\Type\DateTime;
 use Uplab\Tilda\Diag\Logger;
 use Uplab\Tilda\Helper;
 use Uplab\Tilda\Model\CacheTable;
 use Uplab\Tilda\Request;
 
+Loc::loadMessages(__FILE__);
+
 /**
  * Сервис кэширования ответов Tilda API поверх {@see \Bitrix\Main\Data\Cache}.
  *
- * Хранит данные в базовом каталоге кэша `cache_tilda` со сроком жизни 7 дней
- * и ведёт реестр закэшированных страниц в таблице {@see CacheTable}.
- * Предоставляет методы точечной и полной очистки кэша.
+ * Хранит данные в базовом каталоге кэша `cache_tilda` и ведёт реестр
+ * закэшированных страниц в таблице {@see CacheTable}. Срок жизни задаётся
+ * вызывающим кодом: контент страниц кэшируется надолго, списки проектов и
+ * страниц — на короткое время, иначе новая страница Tilda неделю не видна
+ * в редакторе. Предоставляет методы точечной и полной очистки кэша.
  *
  * @package Uplab\Tilda\Service
  */
 class Cache
 {
+    /** Срок жизни кэша контента страницы, секунд. */
+    const DEFAULT_TTL = 604800;
+
+    /** Срок жизни кэша списков проектов и страниц, секунд. */
+    const DEFAULT_LIST_TTL = 600;
+
     /** @var string Базовый каталог кэша Битрикс для данных Tilda. */
     protected static $cacheBaseDir = 'cache_tilda';
 
     /**
+     * @var string|null Текст ошибки последнего вызова {@see self::cache()}
+     *                  либо null, если он завершился успешно.
+     *
+     * Нужен, чтобы отличать «Tilda вернула пустой список» от «запрос не
+     * удался»: сам метод в обоих случаях возвращает пустой массив, а для
+     * интерфейса это принципиально разные состояния.
+     */
+    private static $lastError = null;
+
+    /**
+     * Возвращает текст ошибки последнего вызова {@see self::cache()}.
+     *
+     * @return string|null null, если последний вызов отработал без ошибки.
+     */
+    public static function getLastError()
+    {
+        return self::$lastError;
+    }
+
+    /**
      * Возвращает данные из кэша либо, при промахе, запрашивает их по URL и
-     * кэширует на 7 дней.
+     * кэширует на $ttl секунд.
      *
      * При ответе со статусом `ERROR` кэширование прерывается, сообщение
      * логируется через {@see Helper::notifyError()}, запись в {@see CacheTable}
      * не создаётся и метод возвращает пустой массив. При успешном ответе и
      * $noteInBase = true запись о странице добавляется/обновляется в {@see CacheTable}.
      *
-     * @param string $url        Полный URL запроса к Tilda API.
-     * @param string $cacheId    Идентификатор кэша (обычно md5 от URL).
-     * @param string $cacheDir   Подкаталог кэша.
-     * @param bool   $noteInBase Регистрировать ли запись в таблице реестра страниц.
+     * @param string   $url        Полный URL запроса к Tilda API.
+     * @param string   $cacheId    Идентификатор кэша (обычно md5 от URL).
+     * @param string   $cacheDir   Подкаталог кэша.
+     * @param bool     $noteInBase Регистрировать ли запись в таблице реестра страниц.
+     * @param int|null $ttl        Срок жизни кэша, секунд; null — {@see self::DEFAULT_TTL}.
      * @return array Поле `result` ответа Tilda либо пустой массив.
      */
-    public static function cache($url, $cacheId, $cacheDir, $noteInBase = false)
+    public static function cache($url, $cacheId, $cacheDir, $noteInBase = false, $ttl = null)
     {
-        $cacheTime = 604800;
+        $cacheTime = ((int)$ttl > 0) ? (int)$ttl : self::DEFAULT_TTL;
+
+        self::$lastError = null;
 
         $data = [];
 
         $cache = BitrixCache::createInstance();
 
         if ($cache->initCache($cacheTime, $cacheId, $cacheDir, self::$cacheBaseDir)) {
-            $result = $cache->getVars();
-            $data = is_array($result) && isset($result['arrResponse']) ? $result['arrResponse'] : [];
+            $data = self::readCachedResponse($cache);
 
             Logger::debug('Cache hit', [
                 'cacheId'  => $cacheId,
@@ -82,15 +115,38 @@ class Cache
             $data = json_decode((string)$content, true);
 
             if (!is_array($data) || ($data['status'] ?? '') === 'ERROR') {
-                if (!empty($data['message'])) {
-                    Helper::notifyError($data['message']);
-                    Logger::error('Tilda API returned error', [
+                // Описание запроса (метод и id страницы/проекта) идёт в
+                // уведомление и журнал: по одному URI страницы сайта непонятно,
+                // какая именно страница Tilda не загрузилась.
+                $request = Request::describeRequest($url);
+
+                if (is_array($data)) {
+                    self::$lastError = !empty($data['message'])
+                        ? $data['message']
+                        : Loc::getMessage('uplab.tilda_ERROR_API');
+
+                    Helper::notifyError(self::$lastError . ' (' . $request . ')');
+                    Logger::error(Loc::getMessage('uplab.tilda_LOG_API_ERROR'), [
                         'status'  => $data['status'] ?? '',
-                        'message' => $data['message'],
+                        'message' => $data['message'] ?? '',
                         'url'     => Logger::maskUrl($url),
                     ]);
+                } elseif ($content === false) {
+                    // Об ошибке транспорта уже сообщил Request::makeRequest() —
+                    // второе уведомление о том же сбое админу не нужно.
+                    self::$lastError = Loc::getMessage('uplab.tilda_ERROR_NO_RESPONSE');
+
+                    Logger::error(Loc::getMessage('uplab.tilda_LOG_NO_RESPONSE'), [
+                        'url' => Logger::maskUrl($url),
+                    ]);
                 } else {
-                    Logger::error('Tilda API returned invalid response', [
+                    self::$lastError = Loc::getMessage('uplab.tilda_ERROR_INVALID_RESPONSE');
+
+                    // Ответ пришёл, но разобрать его не удалось. Без уведомления
+                    // такой сбой виден только в файловом журнале, а он по
+                    // умолчанию выключен.
+                    Helper::notifyError(self::$lastError . ' (' . $request . ')');
+                    Logger::error(Loc::getMessage('uplab.tilda_LOG_INVALID_RESPONSE'), [
                         'json_error' => json_last_error_msg(),
                         'body'       => $content,
                         'url'        => Logger::maskUrl($url),
@@ -107,12 +163,27 @@ class Cache
             if (($data['status'] ?? '') !== 'FOUND' || empty($data['result'])) {
                 // Формально не ошибка, но контента не будет — без этой записи
                 // в журнале причина пустой страницы остаётся неочевидной.
-                Logger::warning('Tilda API returned no result', [
+                Logger::warning(Loc::getMessage('uplab.tilda_LOG_NO_RESULT'), [
                     'status'  => $data['status'] ?? '',
                     'message' => $data['message'] ?? '',
                     'body'    => $content,
                     'url'     => Logger::maskUrl($url),
                 ]);
+
+                // Пустой результат кэшируется только для списков: проект без
+                // страниц — нормальный ответ. Для контента страницы ($noteInBase)
+                // и для любого статуса, кроме FOUND, это сбой, и держать его
+                // неделю в кэше нельзя — иначе статья пропадёт с сайта до
+                // ручной очистки кэша.
+                if ($noteInBase || ($data['status'] ?? '') !== 'FOUND') {
+                    self::$lastError = Loc::getMessage('uplab.tilda_ERROR_EMPTY_RESULT');
+
+                    Helper::notifyError(self::$lastError . ' (' . Request::describeRequest($url) . ')');
+
+                    $cache->abortDataCache();
+
+                    return [];
+                }
             }
 
             Logger::info('API response cached', [
@@ -132,11 +203,39 @@ class Cache
                     'DATE'       => new DateTime(),
                 ]);
             }
+        } elseif ($cache->initCache($cacheTime, $cacheId, $cacheDir, self::$cacheBaseDir)) {
+            // Кэш появился между проверкой и попыткой записи: параллельный хит
+            // выполнил запрос первым. Читаем то, что он сохранил, иначе метод
+            // вернул бы пустоту при живых данных.
+            $data = self::readCachedResponse($cache);
+
+            Logger::debug('Cache hit after concurrent write', ['cacheId' => $cacheId]);
+        } else {
+            // Запись занята другим процессом, а готовых данных нет.
+            self::$lastError = Loc::getMessage('uplab.tilda_ERROR_NO_RESPONSE');
+
+            Logger::warning(Loc::getMessage('uplab.tilda_LOG_CACHE_BUSY'), [
+                'cacheId'  => $cacheId,
+                'cacheDir' => $cacheDir,
+            ]);
         }
 
         return (is_array($data) && ($data['status'] ?? '') === 'FOUND' && !empty($data['result']))
             ? $data['result']
             : [];
+    }
+
+    /**
+     * Достаёт сохранённый ответ API из открытого кэша.
+     *
+     * @param BitrixCache $cache Кэш, для которого уже отработал initCache().
+     * @return array
+     */
+    private static function readCachedResponse($cache)
+    {
+        $result = $cache->getVars();
+
+        return (is_array($result) && isset($result['arrResponse'])) ? $result['arrResponse'] : [];
     }
 
     /**

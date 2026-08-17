@@ -34,11 +34,13 @@ $aMenu = [
         ],
         [
             "text" => Loc::getMessage('uplab.tilda_CLEAR_CACHE_LIST_MENU_TITLE'),
-            "url"  => "javascript:uTildaClearCacheList('" . Loc::getMessage("uplab.tilda_CLEAR_CACHE_LIST_CONFIRM") . "');",
+            // Языковая строка уходит в JS-контекст — экранируем так же, как в
+            // списке страниц: апостроф в переводе иначе ломает вызов.
+            "url"  => "javascript:uTildaClearCacheList('" . CUtil::JSEscape(Loc::getMessage("uplab.tilda_CLEAR_CACHE_LIST_CONFIRM")) . "');",
         ],
         [
             "text" => Loc::getMessage('uplab.tilda_CLEAR_CACHE_MENU_TITLE'),
-            "url"  => "javascript:uTildaClearCache('" . Loc::getMessage("uplab.tilda_CLEAR_CACHE_CONFIRM") . "');",
+            "url"  => "javascript:uTildaClearCache('" . CUtil::JSEscape(Loc::getMessage("uplab.tilda_CLEAR_CACHE_CONFIRM")) . "');",
         ]
     ]
 ];
