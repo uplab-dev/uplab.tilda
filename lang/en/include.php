@@ -65,6 +65,7 @@ $MESS['uplab.tilda_LOG_DIR_LABEL']      = 'Log files are written to:';
 $MESS['uplab.tilda_LOG_DIR_EXISTS']     = 'directory exists';
 $MESS['uplab.tilda_LOG_DIR_NOT_EXISTS'] = 'directory will be created automatically on first write';
 $MESS['uplab.tilda_LOG_DIR_FOREIGN']    = 'These files in the log directory were not created by the module: #FILES#';
+$MESS['uplab.tilda_LOG_DIR_LEGACY']     = 'Logs in the previous format (before version 3.3.2, one file per day): #COUNT# file(s), #SIZE#. The module does not delete them — they may still be needed to investigate an incident. Use the "Clear logs" button to remove them.';
 
 $MESS['uplab.tilda_CHECK_CONNECTION']          = 'Test connection';
 $MESS['uplab.tilda_CHECK_CONN_CHECKING']       = 'Checking...';

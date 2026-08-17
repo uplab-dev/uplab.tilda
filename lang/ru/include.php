@@ -65,6 +65,7 @@ $MESS['uplab.tilda_LOG_DIR_LABEL']      = 'Лог-файлы записываю�
 $MESS['uplab.tilda_LOG_DIR_EXISTS']     = 'каталог существует';
 $MESS['uplab.tilda_LOG_DIR_NOT_EXISTS'] = 'каталог будет создан автоматически при первой записи';
 $MESS['uplab.tilda_LOG_DIR_FOREIGN']    = 'Модуль не создавал эти файлы в каталоге логов: #FILES#';
+$MESS['uplab.tilda_LOG_DIR_LEGACY']     = 'Журналы прежнего формата (до версии 3.3.2, по файлу на каждый день): #COUNT# шт., #SIZE#. Модуль их не удаляет — они могут понадобиться для разбора инцидента. Удалить их можно кнопкой «Очистить логи».';
 
 $MESS['uplab.tilda_CHECK_CONNECTION']          = 'Проверить подключение';
 $MESS['uplab.tilda_CHECK_CONN_CHECKING']       = 'Проверка...';

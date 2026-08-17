@@ -38,11 +38,16 @@ use Bitrix\Main\Diag\FileLogger;
  * установлен модуль (определяется через `getLocalPath()`). Оба каталога закрыты
  * от HTTP штатными правилами Битрикса.
  *
- * Файлы — суточные, вида `tilda_{salt}_{date}.log`. Имя содержит случайную соль
- * (32 hex-символа), генерируемую один раз и хранящуюся в опции `UPT_LOG_SALT`, —
- * это делает URL лога непредсказуемым при прямом переборе, если каталог всё же
- * доступен по HTTP. Каталог внутри DOCUMENT_ROOT дополнительно закрывается
- * `.htaccess` (Apache 2.2 и 2.4); для nginx правило приводится в `DEVELOPER.md`.
+ * В каталоге всегда не больше двух файлов: текущий `tilda_{salt}.log` и его
+ * предыдущая копия `tilda_{salt}.log.old`, которую ядро создаёт при превышении
+ * {@see Logger::MAX_FILE_SIZE}. Занятое место ограничено сверху удвоенным
+ * лимитом и не растёт со временем.
+ *
+ * Имя содержит случайную соль (32 hex-символа), генерируемую один раз и
+ * хранящуюся в опции `UPT_LOG_SALT`, — это делает URL лога непредсказуемым при
+ * прямом переборе, если каталог всё же доступен по HTTP. Каталог внутри
+ * DOCUMENT_ROOT дополнительно закрывается `.htaccess` (Apache 2.2 и 2.4); для
+ * nginx правило приводится в `DEVELOPER.md`.
  * Ключи API в URL маскируются методом {@see Logger::maskUrl()} перед любой записью.
  *
  * @package Uplab\Tilda\Diag
@@ -60,8 +65,11 @@ class Logger
 
     /**
      * Предельный размер файла журнала (32 МБ). При превышении ядро копирует
-     * файл в `*.log.old` и начинает новый. Штатный лимит FileLogger — 1 МБ,
+     * файл в `*.log.old` и обнуляет текущий. Штатный лимит FileLogger — 1 МБ,
      * его не хватает: один ответ `getpagefull` занимает сотни килобайт.
+     *
+     * Максимум, который журнал может занять на диске, — два таких файла (64 МБ):
+     * третьего не появляется, `.old` перезаписывается при каждой ротации.
      */
     const MAX_FILE_SIZE = 33554432;
 
@@ -79,11 +87,8 @@ class Logger
     /** @var string|null Кэш: минимальный уровень (из опции `UPT_LOG_LEVEL`). */
     private static $minLevel = null;
 
-    /** @var FileLogger|null Экземпляр FileLogger для текущего дня. */
+    /** @var FileLogger|null Экземпляр FileLogger (один на хит). */
     private static $fileLogger = null;
-
-    /** @var string Дата, под которую создан {@see $fileLogger} (формат Y-m-d). */
-    private static $fileLoggerDate = '';
 
     /** @var string|null Кэш: случайная соль имени файла (из опции `UPT_LOG_SALT`). */
     private static $salt = null;
@@ -167,12 +172,11 @@ class Logger
      */
     public static function reset()
     {
-        self::$enabled        = null;
-        self::$minLevel       = null;
-        self::$fileLogger     = null;
-        self::$fileLoggerDate = '';
-        self::$salt           = null;
-        self::$logDir         = null;
+        self::$enabled    = null;
+        self::$minLevel   = null;
+        self::$fileLogger = null;
+        self::$salt       = null;
+        self::$logDir     = null;
     }
 
     /**
@@ -362,7 +366,10 @@ class Logger
                 continue;
             }
 
-            if (preg_match('/^tilda_[a-f0-9]{32}_\d{4}-\d{2}-\d{2}\.log(\.old)?$/i', $entry)) {
+            // Своими считаются и текущее имя (tilda_{salt}.log), и файлы прежней
+            // посуточной схемы: модуль их не удаляет, они лежат в каталоге,
+            // пока администратор не нажмёт «Очистить логи».
+            if (preg_match('/^tilda_[a-f0-9]{32}(_\d{4}-\d{2}-\d{2})?\.log(\.old)?$/i', $entry)) {
                 continue;
             }
 
@@ -374,6 +381,50 @@ class Logger
         }
 
         return $foreign;
+    }
+
+    /**
+     * Считает журналы прежней, посуточной схемы именования
+     * (`tilda_{salt}_ГГГГ-ММ-ДД.log` и `.log.old` к ним).
+     *
+     * До 3.3.2 такой файл создавался каждый день и никогда не удалялся, поэтому
+     * у давно работающих установок их может быть много. Модуль не удаляет их
+     * сам: журнал бывает нужен для разбора инцидента, а тихое удаление на
+     * публичном хите администратор не заметит. Вместо этого страница настроек
+     * показывает, сколько места они занимают, — удаляет их кнопка «Очистить логи».
+     *
+     * @return array{count: int, size: int} Число файлов и суммарный размер в байтах.
+     */
+    public static function findLegacyLogs()
+    {
+        $result = ['count' => 0, 'size' => 0];
+
+        $logDir = self::getLogDir();
+
+        if (!is_dir($logDir)) {
+            return $result;
+        }
+
+        $files = glob($logDir . 'tilda_*_*.log*');
+
+        if ($files === false) {
+            return $result;
+        }
+
+        foreach ($files as $file) {
+            if (!is_file($file)) {
+                continue;
+            }
+
+            if (!preg_match('/^tilda_[a-f0-9]{32}_\d{4}-\d{2}-\d{2}\.log(\.old)?$/i', basename($file))) {
+                continue;
+            }
+
+            $result['count']++;
+            $result['size'] += (int)@filesize($file);
+        }
+
+        return $result;
     }
 
     private static function isAbsolutePath($path)
@@ -464,16 +515,23 @@ class Logger
     }
 
     /**
-     * Возвращает (или создаёт) экземпляр Bitrix FileLogger для текущего дня.
+     * Возвращает (или создаёт) экземпляр Bitrix FileLogger.
      *
-     * При смене даты создаётся новый экземпляр с новым путём к файлу, что
-     * обеспечивает суточную ротацию без внешнего cronjob.
+     * Журнал ведётся в одном файле `tilda_{salt}.log`; при превышении
+     * {@see self::MAX_FILE_SIZE} ядро копирует его в `tilda_{salt}.log.old` и
+     * начинает файл заново. Больше двух файлов в каталоге не появляется,
+     * а занятое место ограничено сверху удвоенным лимитом.
+     *
+     * До версии 3.3.2 имя содержало дату, и каждый день создавался новый файл,
+     * который никогда не удалялся — каталог рос без предела. Накопленные файлы
+     * модуль сам не трогает: журнал может понадобиться для разбора инцидента, а
+     * удаление на публичном хите произошло бы незаметно для администратора.
+     * Их количество и объём показываются на странице настроек
+     * ({@see self::findLegacyLogs()}), удаляет их кнопка «Очистить логи».
      */
     private static function getFileLogger()
     {
-        $today = date('Y-m-d');
-
-        if (self::$fileLogger === null || self::$fileLoggerDate !== $today) {
+        if (self::$fileLogger === null) {
             $logDir = self::getLogDir();
 
             if (!is_dir($logDir)) {
@@ -484,9 +542,8 @@ class Logger
             // если его создали вручную или он остался от прежней настройки.
             self::protectLogDir($logDir);
 
-            $filename = 'tilda_' . self::getSalt() . '_' . $today . '.log';
-            self::$fileLogger     = new FileLogger($logDir . $filename, self::MAX_FILE_SIZE);
-            self::$fileLoggerDate = $today;
+            $filename = 'tilda_' . self::getSalt() . '.log';
+            self::$fileLogger = new FileLogger($logDir . $filename, self::MAX_FILE_SIZE);
         }
 
         return self::$fileLogger;
