@@ -23,6 +23,7 @@ namespace Uplab\Tilda;
 use Bitrix\Main\Config\Option;
 use Bitrix\Main\Localization\Loc;
 use Uplab\Tilda\Diag\Logger;
+use Uplab\Tilda\Service\Cache;
 
 Loc::loadMessages(__FILE__);
 
@@ -221,8 +222,33 @@ class Common
             ];
         }
 
-        $arPages = array();
+        $result = self::getAssocPagesResult($projectId, $unicode);
+
+        return $result['pages'];
+    }
+
+    /**
+     * Возвращает список страниц проекта вместе с признаком неудачного запроса.
+     *
+     * Отличается от {@see Common::getAssocPagesList()} только тем, что
+     * позволяет отличить «в проекте нет страниц» от «список не загрузился»:
+     * оба случая дают пустой массив, и без этого признака интерфейс сообщает
+     * об отсутствии страниц там, где Tilda не ответила.
+     *
+     * @param int|string|false $projectId Идентификатор проекта Tilda.
+     * @param bool             $unicode   Если false — заголовки конвертируются в windows-1251.
+     * @return array{pages: array, error: string|null} Список вида [id => заголовок] и текст ошибки (null, если её не было).
+     */
+    public static function getAssocPagesResult($projectId = false, $unicode = true)
+    {
+        if (empty($projectId)) {
+            return ['pages' => [], 'error' => null];
+        }
+
         $pagesList = self::getPages($projectId, $unicode);
+        $error     = Cache::getLastError();
+
+        $arPages = array();
 
         if (!empty($pagesList)) {
             foreach ($pagesList as $page) {
@@ -230,7 +256,7 @@ class Common
             }
         }
 
-        return $arPages;
+        return ['pages' => $arPages, 'error' => $error];
     }
 
     /**
@@ -314,7 +340,7 @@ class Common
 
             // Fallback: extract #allrecords container if <body> regex failed
             if (empty($html)) {
-                Logger::warning('Body not parsed, trying #allrecords fallback', ['pageId' => $page]);
+                Logger::warning(Loc::getMessage('uplab.tilda_LOG_BODY_FALLBACK'), ['pageId' => $page]);
 
                 $pos = stripos($data['html'], '<div id="allrecords"');
                 if ($pos !== false) {
@@ -456,7 +482,7 @@ class Common
 
             // Fallback: extract #allrecords container if <body> regex failed
             if (empty($html)) {
-                Logger::warning('Body not parsed, trying #allrecords fallback', ['pageId' => $page]);
+                Logger::warning(Loc::getMessage('uplab.tilda_LOG_BODY_FALLBACK'), ['pageId' => $page]);
 
                 $pos = stripos($data['html'], '<div id="allrecords"');
                 if ($pos !== false) {

@@ -21,8 +21,11 @@
 namespace Uplab\Tilda;
 
 use Bitrix\Main\Application;
+use Bitrix\Main\Localization\Loc;
 use Uplab\Tilda\Diag\Logger;
 use Uplab\Tilda\Enum\MoveResourcesTarget;
+
+Loc::loadMessages(__FILE__);
 
 /**
  * Замена тегов `[UPLABTILDA ...]` на HTML-контент страниц Tilda в буфере вывода.
@@ -119,7 +122,19 @@ class Replace
             // Case: Don't display site template
             Logger::debug('Replacing tag', ['pageId' => $pageId, 'mode' => 'HIDEPAGETEMPLATE']);
 
-            $content = Common::getPageFullContent($pageId);
+            $tildaContent = Common::getPageFullContent($pageId);
+
+            if ($tildaContent !== '') {
+                $content = $tildaContent;
+            } else {
+                // Пустой ответ Tilda не должен обнулять весь буфер: иначе
+                // посетитель получает документ нулевой длины с кодом 200.
+                // Оставляем страницу сайта, но вырезаем сам тег — служебная
+                // строка на виду у читателя недопустима.
+                $content = str_replace($tildaTag, '', $content);
+
+                Logger::error(Loc::getMessage('uplab.tilda_LOG_EMPTY_CONTENT'), ['pageId' => $pageId]);
+            }
         } else {
             $moveTarget = MoveResourcesTarget::fromMixed($params['MOVERESOURCESTO'] ?? '');
             if (MoveResourcesTarget::shouldMove($moveTarget)) {

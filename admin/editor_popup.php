@@ -22,6 +22,7 @@ use Bitrix\Main\Loader;
 use Bitrix\Main\Context;
 use Uplab\Tilda\Common;
 use Uplab\Tilda\Enum\MoveResourcesTarget;
+use Uplab\Tilda\Service\Cache;
 use Bitrix\Main\Localization\Loc;
 
 const STOP_STATISTICS = true;
@@ -57,6 +58,43 @@ $editPage = (int)$request->get('EDIT_PAGE');
 $editHideTemplate = ($request->get('EDIT_HIDEPAGETEMPLATE') === 'Y');
 $editMoveResources = MoveResourcesTarget::fromMixed($request->get('EDIT_MOVERESOURCESTO'));
 
+// Значения формы, пришедшие при сохранении.
+$submittedProject = (int)$request->get('PROJECT');
+$submittedPage = (int)$request->get('PAGE');
+$submitError = '';
+
+// Сохранение: тег вставляется только с конкретной страницей. Пустой список
+// страниц (в проекте их нет или Tilda не ответила) не должен превращаться
+// в заведомо нерабочий тег с PAGE=0.
+if ($submittedProject > 0) {
+    if ($submittedPage > 0) {
+        $tagStr = "UPLABTILDA PROJECT={$submittedProject} PAGE={$submittedPage}";
+
+        if ($request->get('no_template') === 'Y') {
+            $tagStr .= ' HIDEPAGETEMPLATE=Y';
+        }
+
+        $moveTarget = MoveResourcesTarget::fromMixed($request->get('move_resources_to'));
+        if (MoveResourcesTarget::shouldMove($moveTarget)) {
+            $tagStr .= ' MOVERESOURCESTO=' . $moveTarget;
+        }
+        ?>
+        <script>
+            <?php // Close the window ?>
+            BX.WindowManager.Get().AllowClose();
+            BX.WindowManager.Get().Close();
+            <?php // Insert a line into the visual editor ?>
+            window.tildaTag('[' + '<?= CUtil::JSEscape($tagStr) ?>' + ']');
+        </script>
+        <?php
+        require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/epilog_admin_after.php");
+
+        return;
+    }
+
+    $submitError = Loc::getMessage('uplab.tilda_PAGE_NOT_SELECTED');
+}
+
 // Build the resource-move dropdown options from the single source of truth (enum).
 $moveResourcesOptions = array();
 foreach (MoveResourcesTarget::langSuffixes() as $optValue => $langSuffix) {
@@ -65,10 +103,72 @@ foreach (MoveResourcesTarget::langSuffixes() as $optValue => $langSuffix) {
 
 // Receive a list of projects
 $arProjects = Common::getAssocProjectsList();
+// Пустой список сам по себе не говорит, что проектов нет: запрос мог не
+// удаться. Ошибку последнего обращения к API отдаёт кэш-сервис.
+$projectsError = Cache::getLastError();
+
+if ($projectsError !== null) {
+    \CMain::FinalActions(
+        htmlspecialcharsbx(
+            Loc::getMessage('uplab.tilda_PROJECTS_LOAD_ERROR', ['#MESSAGE#' => $projectsError])
+        )
+    );
+}
 
 if (empty($arProjects)) {
     \CMain::FinalActions(GetMessage("uplab.tilda_NO_PROJECTS") . " <a href=\"/bitrix/admin/settings.php?lang=" . LANGUAGE_ID . "&mid=uplab.tilda\">" . GetMessage("uplab.tilda_NO_KEYS") . "</a>");
 }
+
+// Проект, для которого показывается список страниц: редактируемый, отправленный
+// формой либо первый в списке. Страницы остальных проектов не запрашиваются —
+// раньше попап тянул их для всех проектов сразу и открывался тем дольше, чем
+// больше проектов в аккаунте.
+$selectedProject = 0;
+foreach ([$submittedProject, $editProject] as $candidate) {
+    if ($candidate > 0 && isset($arProjects[$candidate])) {
+        $selectedProject = $candidate;
+        break;
+    }
+}
+
+if ($selectedProject === 0) {
+    $selectedProject = (int)array_key_first($arProjects);
+}
+
+$pagesResult = Common::getAssocPagesResult($selectedProject);
+$arPages = $pagesResult['pages'];
+$pagesError = $pagesResult['error'];
+
+$jsMessages = [
+    'loading' => Loc::getMessage('uplab.tilda_PAGES_LOADING'),
+    'empty'   => Loc::getMessage('uplab.tilda_PAGES_EMPTY'),
+    'error'   => Loc::getMessage('uplab.tilda_PAGES_LOAD_ERROR'),
+    'timeout' => Loc::getMessage('uplab.tilda_PAGES_LOAD_TIMEOUT'),
+    'retry'   => Loc::getMessage('uplab.tilda_RETRY'),
+];
+
+// Список для клиентского кэша: те же данные, что отрисованы в селекте.
+$jsPages = [];
+foreach ($arPages as $id => $title) {
+    $jsPages[] = ['id' => (int)$id, 'title' => (string)$title];
+}
+
+/**
+ * Кодирует данные для вставки в тело <script>.
+ *
+ * Заголовки страниц приходят из Tilda и могут содержать угловые скобки:
+ * последовательность «</script>» в заголовке закрыла бы тег и превратила
+ * остаток данных в разметку. JSON_HEX_TAG экранирует их в < / >.
+ *
+ * @param mixed $value
+ * @return string
+ */
+$jsonForScript = function ($value) {
+    return json_encode(
+        $value,
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+    );
+};
 
 // Draw the form
 ?>
@@ -81,6 +181,15 @@ if (empty($arProjects)) {
             <tr class="bxcompprop-prop-tr">
                 <td class="bxcompprop-cont-table-title" colspan="2"><?= Loc::getMessage("uplab.tilda_PAGE_SELECT"); ?></td>
             </tr>
+            <?php
+            if ($submitError !== '') { ?>
+                <tr class="bxcompprop-prop-tr">
+                    <td class="bxcompprop-cont-table-r" colspan="2">
+                        <span style="color: #c00;"><?= htmlspecialcharsbx($submitError) ?></span>
+                    </td>
+                </tr>
+                <?php
+            } ?>
             <tr class="bxcompprop-prop-tr">
                 <td class="bxcompprop-cont-table-l">
                     <label class="bxcompprop-label" for="projects_select"><?= Loc::getMessage("uplab.tilda_SELECT_PROJECT"); ?></label>
@@ -89,7 +198,7 @@ if (empty($arProjects)) {
                     <select size="1" name="PROJECT" id="projects_select">
                         <?php
                         foreach ($arProjects as $key => $value) { ?>
-                            <option value="<?= htmlspecialcharsbx($key) ?>" <?= ($editProject && (int)$key === $editProject) ? "selected" : "" ?>><?= htmlspecialcharsbx($value) ?></option>
+                            <option value="<?= htmlspecialcharsbx($key) ?>" <?= ((int)$key === $selectedProject) ? "selected" : "" ?>><?= htmlspecialcharsbx($value) ?></option>
                             <?php
                         } ?>
                     </select>
@@ -98,34 +207,38 @@ if (empty($arProjects)) {
 
             <tr class="bxcompprop-prop-tr">
                 <td class="bxcompprop-cont-table-l">
-                    <label class="bxcompprop-label" for=""><?= Loc::getMessage("uplab.tilda_SELECT_PAGE"); ?></label>
+                    <label class="bxcompprop-label" for="pages_select"><?= Loc::getMessage("uplab.tilda_SELECT_PAGE"); ?></label>
                 </td>
                 <td class="bxcompprop-cont-table-r">
-                    <?php
-                    $j = 0;
-                    foreach ($arProjects as $key => $value) {
-                        $j++;
-                        $arPages = Common::getAssocPagesList($key);
-                        // Show the list for the edited project (or the first one when inserting a new tag).
-                        $showThis = $editProject ? ((int)$key === $editProject) : ($j === 1); ?>
-                        <select size="1" name="PAGE_<?= htmlspecialcharsbx($key) ?>" id="page_select_<?= htmlspecialcharsbx($key) ?>" class="js-project-page" style="max-width: 453px; <?= $showThis ? "" : "display: none;" ?>">
-                            <?php
-                            foreach ($arPages as $id => $name) { ?>
-                                <option value="<?= htmlspecialcharsbx($id) ?>" <?= ($editPage && (int)$id === $editPage) ? "selected" : "" ?>><?= htmlspecialcharsbx($name) ?></option>
-                                <?php
-                            } ?>
-                        </select>
+                    <select size="1" name="PAGE" id="pages_select" style="max-width: 453px;<?= (!empty($arPages) && $pagesError === null) ? '' : ' display: none;' ?>">
                         <?php
-                    } ?>
+                        foreach ($arPages as $id => $name) { ?>
+                            <option value="<?= htmlspecialcharsbx($id) ?>" <?= ($editPage && (int)$id === $editPage) ? "selected" : "" ?>><?= htmlspecialcharsbx($name) ?></option>
+                            <?php
+                        } ?>
+                    </select>
+                    <?php
+                    // Пустой список и несработавший запрос выглядят одинаково —
+                    // пустым выпадающим списком, поэтому состояние подписывается
+                    // текстом, а при ошибке даётся кнопка повтора.
+                    $initialMessage = '';
+                    if ($pagesError !== null) {
+                        $initialMessage = Loc::getMessage('uplab.tilda_PAGES_LOAD_ERROR');
+                    } elseif (empty($arPages)) {
+                        $initialMessage = Loc::getMessage('uplab.tilda_PAGES_EMPTY');
+                    }
+                    ?>
+                    <span id="pages_message"><?= htmlspecialcharsbx($initialMessage) ?></span>
+                    <button type="button" id="pages_retry" style="<?= ($pagesError !== null) ? '' : 'display: none;' ?>"><?= htmlspecialcharsbx(Loc::getMessage('uplab.tilda_RETRY')) ?></button>
                 </td>
             </tr>
 
             <tr class="bxcompprop-prop-tr">
                 <td class="bxcompprop-cont-table-l">
-                    <label class="bxcompprop-label" for=""><?= Loc::getMessage("uplab.tilda_NO_TEMPLATE") ?></label>
+                    <label class="bxcompprop-label" for="no_template_checkbox"><?= Loc::getMessage("uplab.tilda_NO_TEMPLATE") ?></label>
                 </td>
                 <td class="bxcompprop-cont-table-r">
-                    <input type="checkbox" name="no_template" id="no_template_checkbox" class="adm-designed-checkbox" <?= $editHideTemplate ? "checked" : "" ?>>
+                    <input type="checkbox" name="no_template" value="Y" id="no_template_checkbox" class="adm-designed-checkbox" <?= $editHideTemplate ? "checked" : "" ?>>
                     <label class="adm-designed-checkbox-label" for="no_template_checkbox" title=""></label>
                 </td>
             </tr>
@@ -152,47 +265,177 @@ if (empty($arProjects)) {
         <?php // Draw the Save and Close buttons ?>
         BX.WindowManager.Get().SetButtons([BX.CDialog.prototype.btnSave, BX.CDialog.prototype.btnCancel]);
 
-        <?php // Show only the selection from the page of the selected project ?>
-        BX.ready(function () {
-            var projectSelect = document.querySelector("select[name=PROJECT]");
-            if (!projectSelect) {
+        (function () {
+            var MESSAGES = <?= $jsonForScript($jsMessages) ?>;
+            var POST_URL = '/bitrix/tools/uplab.tilda_post.php';
+
+            var projectSelect = document.getElementById('projects_select');
+            var pageSelect = document.getElementById('pages_select');
+            var messageBox = document.getElementById('pages_message');
+            var retryButton = document.getElementById('pages_retry');
+
+            if (!projectSelect || !pageSelect || !messageBox || !retryButton) {
                 return;
             }
-            projectSelect.addEventListener("change", function () {
-                var project = this.value;
-                var pages = document.querySelectorAll(".js-project-page");
+
+            // Номер последнего отправленного запроса: ответы более ранних
+            // запросов игнорируются, иначе медленный ответ по прежнему проекту
+            // перезапишет список только что выбранного.
+            var lastRequest = 0;
+
+            // Уже полученные списки страниц: повторный выбор того же проекта
+            // берётся из памяти окна, без обращения к серверу. Кэш живёт только
+            // пока открыт попап — иначе страница, созданная в Tilda только что,
+            // не появилась бы до перезагрузки админки.
+            var pagesCache = {};
+
+            // Перебор проектов с клавиатуры меняет значение селекта на каждом
+            // шаге; запрос уходит только после паузы, а не на каждый шаг.
+            var loadTimer = null;
+            var LOAD_DELAY = 250;
+
+            // Предел ожидания ответа сервера. Больше собственного таймаута
+            // запроса к Tilda (15 секунд по умолчанию), чтобы не обрывать
+            // работающий запрос, но конечный.
+            var REQUEST_TIMEOUT = 30000;
+
+            // Первичный список отрисован сервером — кладём его в кэш сразу,
+            // чтобы возврат к исходному проекту не стоил запроса.
+            <?php
+            if ($pagesError === null) { ?>
+            pagesCache[<?= (int)$selectedProject ?>] = <?= $jsonForScript($jsPages) ?>;
+            <?php
+            } ?>
+
+            function showMessage(text, withRetry) {
+                messageBox.textContent = text || '';
+                retryButton.style.display = withRetry ? '' : 'none';
+            }
+
+            function fillPages(pages) {
+                pageSelect.innerHTML = '';
+
                 for (var i = 0; i < pages.length; i++) {
-                    pages[i].style.display = (pages[i].name === "PAGE_" + project) ? "" : "none";
+                    var option = document.createElement('option');
+                    option.value = pages[i].id;
+                    option.textContent = pages[i].title;
+                    pageSelect.appendChild(option);
                 }
+
+                pageSelect.style.display = '';
+                showMessage('', false);
+            }
+
+            function loadPages(force) {
+                var projectId = parseInt(projectSelect.value, 10) || 0;
+                var requestId = ++lastRequest;
+
+                if (!force && pagesCache.hasOwnProperty(projectId)) {
+                    if (pagesCache[projectId].length) {
+                        fillPages(pagesCache[projectId]);
+                    } else {
+                        pageSelect.style.display = 'none';
+                        pageSelect.innerHTML = '';
+                        showMessage(MESSAGES.empty, false);
+                    }
+
+                    return;
+                }
+
+                projectSelect.disabled = true;
+                pageSelect.style.display = 'none';
+                pageSelect.innerHTML = '';
+                showMessage(MESSAGES.loading, false);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', POST_URL, true);
+                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                // Без ограничения зависший запрос оставил бы «Загрузка...» и
+                // заблокированный выбор проекта навсегда.
+                xhr.timeout = REQUEST_TIMEOUT;
+
+                // Ответ устаревшего запроса игнорируется: селект разблокирует
+                // актуальный, который ещё выполняется.
+                function isCurrent() {
+                    return requestId === lastRequest;
+                }
+
+                function failRequest(text) {
+                    if (!isCurrent()) {
+                        return;
+                    }
+
+                    projectSelect.disabled = false;
+                    // Неудачу не запоминаем: следующий выбор этого проекта
+                    // должен снова попробовать загрузить список.
+                    showMessage(text || MESSAGES.error, true);
+                }
+
+                xhr.onload = function () {
+                    if (!isCurrent()) {
+                        return;
+                    }
+
+                    var response;
+                    try {
+                        response = JSON.parse(xhr.responseText);
+                    } catch (e) {
+                        response = null;
+                    }
+
+                    if (!response || response.status !== 'success') {
+                        failRequest(response ? response.message : '');
+                        return;
+                    }
+
+                    projectSelect.disabled = false;
+
+                    var pages = response.pages || [];
+                    pagesCache[projectId] = pages;
+
+                    if (response.empty || !pages.length) {
+                        showMessage(MESSAGES.empty, false);
+                        return;
+                    }
+
+                    fillPages(pages);
+                };
+
+                xhr.ontimeout = function () {
+                    failRequest(MESSAGES.timeout);
+                };
+
+                xhr.onerror = function () {
+                    failRequest(MESSAGES.error);
+                };
+
+                xhr.onabort = function () {
+                    failRequest(MESSAGES.error);
+                };
+
+                xhr.send(
+                    'getPages=Y&projectId=' + encodeURIComponent(projectId) +
+                    '&sessid=' + encodeURIComponent(BX.bitrix_sessid())
+                );
+            }
+
+            projectSelect.addEventListener('change', function () {
+                if (loadTimer) {
+                    clearTimeout(loadTimer);
+                }
+
+                loadTimer = setTimeout(function () {
+                    loadTimer = null;
+                    loadPages(false);
+                }, LOAD_DELAY);
             });
-        });
+
+            // Повтор после ошибки идёт мимо кэша и без задержки: пользователь
+            // нажал кнопку осознанно.
+            retryButton.addEventListener('click', function () {
+                loadPages(true);
+            });
+        })();
     </script>
 <?php
-// If the data is selected and received, close the window and insert the tag
-if (!empty($request->get('PROJECT'))) {
-    $project = (int)$request->get('PROJECT');
-    $page = (int)$request->get('PAGE_' . $project);
-
-    $tagStr = "UPLABTILDA PROJECT={$project} PAGE={$page}";
-
-    $no_template = $request->get('no_template');
-    if ($no_template === 'Y') {
-        $tagStr .= ' HIDEPAGETEMPLATE=Y';
-    }
-
-    $moveTarget = MoveResourcesTarget::fromMixed($request->get('move_resources_to'));
-    if (MoveResourcesTarget::shouldMove($moveTarget)) {
-        $tagStr .= ' MOVERESOURCESTO=' . $moveTarget;
-    }
-    ?>
-    <script>
-        <?php // Close the window ?>
-        BX.WindowManager.Get().AllowClose();
-        BX.WindowManager.Get().Close();
-        <?php // Insert a line into the visual editor ?>
-        window.tildaTag('[' + '<?= CUtil::JSEscape($tagStr) ?>' + ']');
-    </script>
-    <?php
-}
-
 require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/epilog_admin_after.php");

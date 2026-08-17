@@ -87,6 +87,12 @@ $aTabs = [
                 15,
                 ['text', 10],
             ],
+            [
+                'UPT_LIST_CACHE_TTL',
+                Loc::getMessage('uplab.tilda_LIST_CACHE_TTL'),
+                \Uplab\Tilda\Service\Cache::DEFAULT_LIST_TTL,
+                ['text', 10],
+            ],
         ],
     ],
     [

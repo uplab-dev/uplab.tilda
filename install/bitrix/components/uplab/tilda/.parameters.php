@@ -20,7 +20,9 @@ $projectsList = Common::getAssocProjectsList();
 $currentProject = !empty($arCurrentValues['PROJECT']) ? $arCurrentValues['PROJECT'] : key($projectsList);
 
 if (!$projectsList || !$currentProject) {
-    echo "<script>alert('" . GetMessage("UPT_NO_PROJECTS") . "');</script>";
+    // Языковая строка уходит в JS-контекст — экранируем, как в остальных
+    // местах модуля: апостроф в переводе иначе ломает скрипт.
+    echo "<script>alert('" . CUtil::JSEscape(GetMessage("UPT_NO_PROJECTS")) . "');</script>";
     return false;
 }
 

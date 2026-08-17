@@ -104,10 +104,15 @@ class Helper
      */
     public static function notifyError($message)
     {
-        // Показать уведомление
+        // Показать уведомление. Текст ошибки приходит извне (ответ Tilda API,
+        // сообщение cURL), а шаблон уведомления содержит разметку и выводится
+        // в админке как HTML — поэтому внешнюю часть экранируем. В журнал
+        // событий уходит исходный текст: там экранирует ядро при выводе.
         \CAdminNotify::Add([
             'NOTIFY_TYPE'  => \CAdminNotify::TYPE_NORMAL,
-            'MESSAGE'      => Loc::getMessage('uplab.tilda_ERROR_REQUEST', ['#MESSAGE#' => $message]),
+            'MESSAGE'      => Loc::getMessage('uplab.tilda_ERROR_REQUEST', [
+                '#MESSAGE#' => htmlspecialcharsbx((string)$message),
+            ]),
             'TAG'          => Common::$module_id . 'error' . md5($message),
             'MODULE_ID'    => Common::$module_id,
             'ENABLE_CLOSE' => 'Y'

@@ -30,6 +30,14 @@ $MESS['uplab.tilda_MOVE_TILDA_ASSETS_BODYEND'] = 'в конец области b
 $MESS['uplab.tilda_NO_PROJECTS'] = 'Нет ни одного проекта (страницы) или не указаны API ключи Тильда.';
 $MESS['uplab.tilda_NO_KEYS'] = 'Указать ключи';
 
+$MESS['uplab.tilda_PAGES_LOADING'] = 'Загрузка списка страниц...';
+$MESS['uplab.tilda_PAGES_EMPTY'] = 'В проекте нет страниц.';
+$MESS['uplab.tilda_PAGES_LOAD_ERROR'] = 'Не удалось загрузить список страниц.';
+$MESS['uplab.tilda_PAGES_LOAD_TIMEOUT'] = 'Tilda не ответила за отведённое время. Список страниц не загружен.';
+$MESS['uplab.tilda_PROJECTS_LOAD_ERROR'] = 'Не удалось загрузить список проектов Tilda: #MESSAGE#';
+$MESS['uplab.tilda_RETRY'] = 'Повторить';
+$MESS['uplab.tilda_PAGE_NOT_SELECTED'] = 'Выберите страницу.';
+
 $MESS['uplab.tilda_NO_MODULE'] = 'Модуль «Интеграция с Tilda» (uplab.tilda) не подключён';
 
 $MESS['uplab.tilda_PAGES'] = 'Страницы';
@@ -39,6 +47,7 @@ $MESS['uplab.tilda_API_URL'] = 'Базовый URL Tilda API (по умолча�
 $MESS['uplab.tilda_API_URL_INVALID'] = 'Модуль «Интеграция с Tilda» (uplab.tilda): адрес API в настройках некорректен, используется #URL#';
 $MESS['uplab.tilda_TIMEOUT'] = 'Максимально позволенное количество секунд для выполнения cURL-функций.';
 $MESS['uplab.tilda_CONNECTTIMEOUT'] = 'Количество секунд ожидания при попытке соединения. Используйте 0 для бесконечного ожидания.';
+$MESS['uplab.tilda_LIST_CACHE_TTL'] = 'Срок кэширования списков проектов и страниц, секунд. Определяет, через сколько новая страница Tilda появится в редакторе (контент страниц кэшируется отдельно, на неделю).';
 
 $MESS['uplab.tilda_SESSION_EXPIRED'] = 'Ваша сессия истекла! Пожалуйста, перегрузите страницу.';
 $MESS['uplab.tilda_UNKNOWN_ACTION'] = 'Неизвестное действие.';

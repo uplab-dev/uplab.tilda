@@ -23,6 +23,7 @@ use Bitrix\Main\Localization\Loc;
 use Bitrix\Main\Application;
 use Bitrix\Main\Context;
 use Bitrix\Main\Engine\Response\Json;
+use Uplab\Tilda\Common;
 use Uplab\Tilda\Diag\Logger;
 use Uplab\Tilda\Request;
 use Uplab\Tilda\Service\Cache;
@@ -43,26 +44,52 @@ global $USER;
 $status = 'error';
 $message = '';
 
+// Дополнительные поля ответа конкретного действия (например, список страниц).
+$payload = [];
+
+// Действие → минимальное право на модуль. Чтение списка страниц нужно
+// редактору и требует только права на просмотр; всё, что меняет состояние
+// или обращается к API с произвольными ключами, — права на изменение.
+$actionRights = [
+    'clearCache'      => 'W',
+    'clearCacheList'  => 'W',
+    'clearLogs'       => 'W',
+    'checkConnection' => 'W',
+    'getPages'        => 'R',
+];
+
 if (!Loader::includeModule(ADMIN_MODULE_NAME)) {
     $message = Loc::getMessage('uplab.tilda_NO_MODULE');
-} elseif (!$USER->IsAuthorized() || $APPLICATION->GetGroupRight(ADMIN_MODULE_NAME) < 'W') {
-    $message = Loc::getMessage('ACCESS_DENIED');
-} elseif (!check_bitrix_sessid()) {
-    $message = Loc::getMessage('uplab.tilda_SESSION_EXPIRED');
 } else {
     $request = Context::getCurrent()->getRequest();
 
-    if ($request->get('clearCache') === 'Y') {
+    $action = '';
+    foreach (array_keys($actionRights) as $name) {
+        if ($request->get($name) === 'Y') {
+            $action = $name;
+            break;
+        }
+    }
+
+    if (!$USER->IsAuthorized()) {
+        $message = Loc::getMessage('ACCESS_DENIED');
+    } elseif ($action === '') {
+        $message = Loc::getMessage('uplab.tilda_UNKNOWN_ACTION');
+    } elseif ($APPLICATION->GetGroupRight(ADMIN_MODULE_NAME) < $actionRights[$action]) {
+        $message = Loc::getMessage('ACCESS_DENIED');
+    } elseif (!check_bitrix_sessid()) {
+        $message = Loc::getMessage('uplab.tilda_SESSION_EXPIRED');
+    } elseif ($action === 'clearCache') {
         Cache::clearAllCache();
         $status  = 'success';
         $message = Loc::getMessage('uplab.tilda_CACHE_CLEARED');
 
-    } elseif ($request->get('clearCacheList') === 'Y') {
+    } elseif ($action === 'clearCacheList') {
         Cache::clearListCache();
         $status  = 'success';
         $message = Loc::getMessage('uplab.tilda_CACHE_LIST_CLEARED');
 
-    } elseif ($request->get('clearLogs') === 'Y') {
+    } elseif ($action === 'clearLogs') {
         $count   = Logger::clearLogs();
         $status  = 'success';
         $message = Loc::getMessage('uplab.tilda_LOGS_CLEARED', ['#COUNT#' => $count]);
@@ -76,7 +103,7 @@ if (!Loader::includeModule(ADMIN_MODULE_NAME)) {
             ]);
         }
 
-    } elseif ($request->get('checkConnection') === 'Y') {
+    } elseif ($action === 'checkConnection') {
         $publicKey = trim((string)$request->getPost('publicKey'));
         $secretKey = trim((string)$request->getPost('secretKey'));
 
@@ -97,8 +124,23 @@ if (!Loader::includeModule(ADMIN_MODULE_NAME)) {
             }
         }
 
-    } else {
-        $message = Loc::getMessage('uplab.tilda_UNKNOWN_ACTION');
+    } elseif ($action === 'getPages') {
+        $result = Common::getAssocPagesResult((int)$request->get('projectId'));
+
+        if ($result['error'] !== null) {
+            // Неудачный запрос и пустой проект — разные состояния: списку
+            // страниц в редакторе нельзя показывать «страниц нет», когда
+            // Tilda просто не ответила.
+            $message = Loc::getMessage('uplab.tilda_PAGES_LOAD_ERROR') . ' ' . $result['error'];
+        } else {
+            $pages = [];
+            foreach ($result['pages'] as $id => $title) {
+                $pages[] = ['id' => (int)$id, 'title' => (string)$title];
+            }
+
+            $status  = 'success';
+            $payload = ['pages' => $pages, 'empty' => empty($pages)];
+        }
     }
 }
 
@@ -106,7 +148,7 @@ if (!Loader::includeModule(ADMIN_MODULE_NAME)) {
 // (\Bitrix\Main\Engine\Response\Json сам выставляет Content-Type: application/json).
 $APPLICATION->RestartBuffer();
 
-Application::getInstance()->end(0, new Json([
+Application::getInstance()->end(0, new Json(array_merge([
     'status'  => $status,
     'message' => (string)$message,
-]));
+], $payload)));
