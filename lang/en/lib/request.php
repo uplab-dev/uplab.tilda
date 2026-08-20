@@ -9,3 +9,8 @@ $MESS['uplab.tilda_LOG_CURL_FAILED']           = 'Request to Tilda failed (cURL)
 $MESS['uplab.tilda_LOG_FGC_FAILED']            = 'Request to Tilda failed (file_get_contents)';
 $MESS['uplab.tilda_LOG_REDIRECT_NOT_FOLLOWED'] = 'Redirect not followed: the fallback transport allows HTTPS only';
 $MESS['uplab.tilda_LOG_CHECK_CONN_INVALID']    = 'Invalid API response during the connection check';
+
+$MESS['uplab.tilda_ERROR_STALLED']  = 'transfer stalled: no new bytes for #SECONDS# s';
+$MESS['uplab.tilda_ERROR_ATTEMPTS'] = '(attempts: #COUNT#)';
+$MESS['uplab.tilda_LOG_RETRY']      = 'Request to Tilda failed, retrying';
+$MESS['uplab.tilda_LOG_STALLED']    = 'Transfer from Tilda stalled, request aborted';

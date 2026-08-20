@@ -24,6 +24,7 @@ use Bitrix\Main\Application;
 use Bitrix\Main\Localization\Loc;
 use Uplab\Tilda\Diag\Logger;
 use Uplab\Tilda\Enum\MoveResourcesTarget;
+use Uplab\Tilda\Service\Cache;
 
 Loc::loadMessages(__FILE__);
 
@@ -125,7 +126,7 @@ class Replace
             $tildaContent = Common::getPageFullContent($pageId);
 
             if ($tildaContent !== '') {
-                $content = $tildaContent;
+                $content = self::injectNotice($tildaContent, self::staleNotice($pageId));
             } else {
                 // Пустой ответ Tilda не должен обнулять весь буфер: иначе
                 // посетитель получает документ нулевой длины с кодом 200.
@@ -147,18 +148,104 @@ class Replace
                 $content = MoveResourcesTarget::injectAssets($moveTarget, $content, $parts['assets']);
 
                 // Replace Tilda tag with content
-                $content = str_replace($tildaTag, $parts['html'], $content);
+                $content = str_replace($tildaTag, self::staleNotice($pageId) . $parts['html'], $content);
             } else {
                 // Case: Display site template case + replace Tilda tag
                 Logger::debug('Replacing tag', ['pageId' => $pageId, 'mode' => 'default']);
 
                 $html = Common::getPageContent($pageId, $params);
 
-                $content = str_replace($tildaTag, $html, $content);
+                $content = str_replace($tildaTag, self::staleNotice($pageId) . $html, $content);
             }
         }
 
         return $content;
+    }
+
+    /**
+     * Формирует пометку о том, что страница отдана из устаревшей копии кэша.
+     *
+     * HTML-комментарий выводится всегда — по нему видно состояние в исходном
+     * коде страницы и в логах внешних проверок. Видимая полоса показывается
+     * только пользователям с правом на модуль: контент-менеджер должен понимать,
+     * что на проде старая версия страницы, а посетитель не должен видеть
+     * служебных сообщений.
+     *
+     * @param int $pageId Идентификатор страницы Tilda.
+     * @return string Пустая строка, если страница отдана из актуального кэша
+     *                или загружена заново.
+     */
+    private static function staleNotice($pageId)
+    {
+        $date = Cache::getStaleServed($pageId);
+
+        if ($date === null) {
+            return '';
+        }
+
+        // Последовательность «--» внутри комментария закрыла бы его раньше
+        // времени, поэтому дату приводим к безопасному виду.
+        $comment = '<!-- uplab.tilda: stale cache, page=' . (int)$pageId
+            . ', fetched ' . str_replace(['--', '>'], ['-', ''], $date) . ' -->' . "\n";
+
+        if (!self::isStaffViewer()) {
+            return $comment;
+        }
+
+        return $comment
+            . '<div class="uplab-tilda-stale" style="margin:0 0 12px;padding:10px 14px;'
+            . 'border:1px solid #f0b429;border-radius:4px;background:#fff8e1;color:#5c4813;'
+            . 'font:14px/1.45 Arial,Helvetica,sans-serif;">'
+            . htmlspecialcharsbx(Loc::getMessage('uplab.tilda_STALE_BAR', ['#DATE#' => $date]))
+            . '</div>' . "\n";
+    }
+
+    /**
+     * Вставляет пометку в начало готового документа Tilda (режим
+     * `HIDEPAGETEMPLATE=Y`, где шаблона сайта нет).
+     *
+     * @param string $document Полный HTML страницы Tilda.
+     * @param string $notice   Пометка либо пустая строка.
+     * @return string
+     */
+    private static function injectNotice($document, $notice)
+    {
+        if ($notice === '') {
+            return $document;
+        }
+
+        if (preg_match('/<body\b[^>]*>/i', $document)) {
+            $injected = preg_replace_callback(
+                '/<body\b[^>]*>/i',
+                function ($matches) use ($notice) {
+                    return $matches[0] . $notice;
+                },
+                $document,
+                1
+            );
+
+            if (is_string($injected)) {
+                return $injected;
+            }
+        }
+
+        // Документ без <body> — не тот HTML, который отдаёт Tilda, но пометку
+        // всё равно не теряем.
+        return $notice . $document;
+    }
+
+    /**
+     * Показывать ли видимую полосу: пометка предназначена сотрудникам, для
+     * посетителя сайта вывод не меняется.
+     *
+     * @return bool
+     */
+    private static function isStaffViewer()
+    {
+        global $APPLICATION;
+
+        return ($APPLICATION instanceof \CMain)
+            && $APPLICATION->GetGroupRight(Common::$module_id) >= 'R';
     }
 
     /**
