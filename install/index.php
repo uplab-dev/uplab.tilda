@@ -2,6 +2,7 @@
 
 use Bitrix\Main\Application;
 use Bitrix\Main\Config\Option;
+use Bitrix\Main\Data\Cache as BitrixCache;
 use Bitrix\Main\EventManager;
 use Bitrix\Main\Loader;
 use Bitrix\Main\Localization\Loc;
@@ -172,7 +173,12 @@ class uplab_tilda extends CModule
         DeleteDirFilesEx("{$_SERVER["DOCUMENT_ROOT"]}/bitrix/components/uplab/tilda");
 
         if (($arParams['delete_cache'] ?? null) === 'Y') {
-            DeleteDirFilesEx("{$_SERVER["DOCUMENT_ROOT"]}/bitrix/cache_tilda");
+            // Через API ядра очищаются и файловый кэш, и внешние движки
+            // (Redis/Memcached). Резервные HTML-копии являются частью данных
+            // модуля и тоже должны удаляться по явному выбору пользователя.
+            $cache = BitrixCache::createInstance();
+            $cache->cleanDir('', 'cache_tilda');
+            $cache->cleanDir('', 'cache_tilda_stale');
         }
 
         $file = "{$_SERVER["DOCUMENT_ROOT"]}/upload/tilda_cookie.txt";

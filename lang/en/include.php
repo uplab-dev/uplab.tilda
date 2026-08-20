@@ -45,7 +45,7 @@ $MESS['uplab.tilda_PAGES'] = 'Pages';
 $MESS['uplab.tilda_BASE_SETTINGS'] = 'Tilda connection settings';
 $MESS['uplab.tilda_API_URL'] = 'Tilda API base URL (default https://api.tildacdn.info/v1/).';
 $MESS['uplab.tilda_API_URL_INVALID'] = 'The "Tilda Integration" module (uplab.tilda): the API address in the settings is invalid, using #URL#';
-$MESS['uplab.tilda_TIMEOUT'] = 'The maximum number of seconds allowed for cURL functions to execute.';
+$MESS['uplab.tilda_TIMEOUT'] = 'Overall request time limit across all retry attempts, seconds.';
 $MESS['uplab.tilda_CONNECTTIMEOUT'] = 'The number of seconds to wait while trying to connect. Use 0 to wait indefinitely.';
 $MESS['uplab.tilda_LIST_CACHE_TTL'] = 'Cache lifetime for project and page lists, seconds. Defines how soon a new Tilda page shows up in the editor (page content is cached separately, for a week).';
 
@@ -80,3 +80,10 @@ $MESS['uplab.tilda_CLEAR_LOGS_BTN']     = 'Clear logs';
 $MESS['uplab.tilda_CLEAR_LOGS_CONFIRM'] = 'Delete all log files? This action cannot be undone.';
 $MESS['uplab.tilda_LOGS_CLEARED']         = 'Logs cleared (#COUNT# file(s)).';
 $MESS['uplab.tilda_LOGS_CLEARED_FOREIGN'] = 'Files not created by the module are left in the directory and were not deleted: #FILES#';
+
+
+$MESS['uplab.tilda_RESILIENCE_SECTION'] = 'Behaviour when Tilda fails';
+$MESS['uplab.tilda_ATTEMPTS'] = 'Number of request attempts (1-5). Tilda sometimes stalls while sending heavy pages, and the next attempt completes:';
+$MESS['uplab.tilda_STALL_TIMEOUT'] = 'Treat the transfer as stalled after this many seconds without new bytes (0 - do not check). Only a transfer that has already started is checked, waiting for the first byte is never aborted:';
+$MESS['uplab.tilda_STALE_ON_ERROR'] = 'Serve the stale page copy when Tilda fails:';
+$MESS['uplab.tilda_STALE_NOTE'] = 'Without this option the Tilda block disappears from the page on a transport failure. With it enabled the last successfully loaded version is served (the copy is kept for 30 days), an error notice appears in the admin panel, a warning goes to the event log, and staff see a stale-version notice on the page itself - visitors do not. A substantive API response (error, page not found, or empty page) is never replaced with the copy because the page may have been unpublished. The copy is removed when the page cache or the whole cache is cleared.';

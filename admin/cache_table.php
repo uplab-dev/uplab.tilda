@@ -170,10 +170,16 @@ $lAdmin->AddHeaders([
     ["id" => "TAG", "content" => Loc::getMessage('uplab.tilda_HEADER_TAG'), "sort" => "TAG", "default" => true],
     ["id" => "PAGE_ID", "content" => Loc::getMessage('uplab.tilda_HEADER_PAGE_ID'), "sort" => "PAGE_ID", "default" => true],
     ["id" => "PROJECT_ID", "content" => Loc::getMessage('uplab.tilda_HEADER_PROJECT_ID'), "sort" => "PROJECT_ID", "default" => true],
-    ["id" => "DATE", "content" => Loc::getMessage('uplab.tilda_HEADER_DATE'), "sort" => "DATE", "default" => true]
+    ["id" => "DATE", "content" => Loc::getMessage('uplab.tilda_HEADER_DATE'), "sort" => "DATE", "default" => true],
+    ["id" => "STATE", "content" => Loc::getMessage('uplab.tilda_HEADER_STATE'), "default" => true]
 ]);
 
 $userItemCache = [];
+
+// Состояние кэша считается по дате последней успешной загрузки: она пишется
+// в том же хите, что и сам кэш, поэтому сроки у них общие.
+$staleEnabled = Cache::isStaleEnabled();
+$now          = time();
 
 while ($item = $entityList->fetch()) {
     $itemId = $item['TAG'];
@@ -185,6 +191,29 @@ while ($item = $entityList->fetch()) {
     $row->AddViewField('PAGE_ID', (int)$item['PAGE_ID']);
     $row->AddViewField('PROJECT_ID', (int)$item['PROJECT_ID']);
     $row->AddViewField('DATE', htmlspecialcharsbx((string)$item['DATE']));
+
+    $age = (!empty($item['DATE']) && $item['DATE'] instanceof \Bitrix\Main\Type\Date)
+        ? $now - $item['DATE']->getTimestamp()
+        : null;
+
+    if ($age === null) {
+        $state = Loc::getMessage('uplab.tilda_STATE_UNKNOWN');
+    } elseif ($age <= Cache::DEFAULT_TTL) {
+        $state = Loc::getMessage('uplab.tilda_STATE_FRESH');
+    } else {
+        // Дата сама по себе не гарантирует наличие резервной копии: запись
+        // могла появиться до обновления до 3.3.3 либо файл мог быть удалён.
+        // Показываем состояние фактического кэша, а не предполагаемое.
+        if (Cache::hasStaleCopy($itemId)) {
+            $state = $staleEnabled
+                ? Loc::getMessage('uplab.tilda_STATE_EXPIRED_STALE_ON')
+                : Loc::getMessage('uplab.tilda_STATE_EXPIRED');
+        } else {
+            $state = Loc::getMessage('uplab.tilda_STATE_EXPIRED_NO_COPY');
+        }
+    }
+
+    $row->AddViewField('STATE', htmlspecialcharsbx($state));
 
     $arActions = [];
 

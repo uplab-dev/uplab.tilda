@@ -97,6 +97,28 @@ $aTabs = [
                 \Uplab\Tilda\Service\Cache::DEFAULT_LIST_TTL,
                 ['text', 10],
             ],
+            Loc::getMessage('uplab.tilda_RESILIENCE_SECTION'),
+            [
+                'UPT_REQUEST_ATTEMPTS',
+                Loc::getMessage('uplab.tilda_ATTEMPTS'),
+                \Uplab\Tilda\Request::DEFAULT_ATTEMPTS,
+                ['text', 10],
+            ],
+            [
+                'UPT_STALL_TIMEOUT',
+                Loc::getMessage('uplab.tilda_STALL_TIMEOUT'),
+                \Uplab\Tilda\Request::DEFAULT_STALL_TIMEOUT,
+                ['text', 10],
+            ],
+            [
+                'UPT_STALE_ON_ERROR',
+                Loc::getMessage('uplab.tilda_STALE_ON_ERROR'),
+                'N',
+                ['checkbox'],
+            ],
+            [
+                'note' => Loc::getMessage('uplab.tilda_STALE_NOTE'),
+            ],
         ],
     ],
     [
